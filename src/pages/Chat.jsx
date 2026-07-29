@@ -53,6 +53,30 @@ export default function Chat() {
     /* CURRENT LOGGED-IN USER */
     const currentUserEmail = getCurrentUser()?.trim().toLowerCase();
 
+    /* KEEP LAYOUT HEIGHT IN SYNC WITH VISIBLE VIEWPORT
+       (fixes keyboard covering the input bar on mobile) */
+    const [viewportHeight, setViewportHeight] = useState(
+        window.visualViewport?.height || window.innerHeight
+    );
+
+    useEffect(() => {
+        const viewport = window.visualViewport;
+
+        if (!viewport) {
+            return;
+        }
+
+        const handleViewportResize = () => {
+            setViewportHeight(viewport.height);
+        };
+
+        viewport.addEventListener("resize", handleViewportResize);
+
+        return () => {
+            viewport.removeEventListener("resize", handleViewportResize);
+        };
+    }, []);
+
     /* LOAD ROOMS */
     const loadRooms = useCallback(async () => {
         try {
@@ -121,7 +145,7 @@ export default function Chat() {
         /* LOAD OLD MESSAGES */
         loadMessages(selectedRoom);
 
-        /* MARK OTHER USER MESSAGES AS SEEN */
+        /* MARK OTHER USER MESSAGES AS SEEN (on room open) */
         markMessagesAsSeen(selectedRoom).catch((error) => {
             console.error("MARK SEEN ERROR:", error);
         });
@@ -135,12 +159,33 @@ export default function Chat() {
                 setMessages((previousMessages) => {
                     return [...previousMessages, message];
                 });
+
+                /* MARK AS SEEN IMMEDIATELY IF THIS ARRIVED
+                   FROM THE OTHER USER WHILE THE ROOM IS OPEN */
+                if (
+                    message.senderEmail?.trim().toLowerCase() !==
+                    currentUserEmail
+                ) {
+                    markMessagesAsSeen(selectedRoom).catch((error) => {
+                        console.error("MARK SEEN ERROR:", error);
+                    });
+                }
             },
 
             /* TYPING */
             (typingData) => {
+                const typingEmail =
+                    typingData.email?.trim().toLowerCase();
+
+                /* IGNORE MY OWN TYPING BROADCAST —
+                   I'm also subscribed to this topic, so without
+                   this filter I'd see my own name as "typing" */
+                if (typingEmail === currentUserEmail) {
+                    return;
+                }
+
                 setTypingUser(
-                    typingData.typing ? typingData.email : ""
+                    typingData.typing ? typingEmail : ""
                 );
             },
 
@@ -247,9 +292,20 @@ export default function Chat() {
             )
             : false;
 
+    /* TYPING DISPLAY NAME — show the other person's name
+       instead of raw email, when it matches the current chat */
+    const typingDisplayName =
+        typingUser &&
+        selectedRoomData?.otherUserEmail?.trim().toLowerCase() === typingUser
+            ? selectedRoomData.otherUserName
+            : typingUser;
+
     /* UI */
     return (
-        <div className="h-screen flex bg-slate-100 overflow-hidden">
+        <div
+            className="flex bg-slate-100 overflow-hidden"
+            style={{ height: `${viewportHeight}px` }}
+        >
             <Sidebar
                 rooms={rooms}
                 selectedRoom={selectedRoom}
@@ -269,7 +325,7 @@ export default function Chat() {
                 } flex-1 flex-col min-w-0`}
             >
                 {/* HEADER */}
-                <div className="bg-white border-b px-5 py-3 flex items-center gap-3">
+                <div className="bg-white border-b px-5 py-3 flex items-center gap-3 shrink-0">
                     {/* BACK BUTTON — mobile only */}
                     <button
                         onClick={() => setSelectedRoom("")}
@@ -283,7 +339,12 @@ export default function Chat() {
                             {displayRoomName}
                         </h2>
 
-                        {selectedRoomType === "CHAT" &&
+                        {typingUser ? (
+                            <p className="text-sm text-green-600">
+                                {typingDisplayName} is typing...
+                            </p>
+                        ) : (
+                            selectedRoomType === "CHAT" &&
                             selectedRoomData?.otherUserEmail && (
                                 <p
                                     className={`text-sm ${
@@ -295,12 +356,7 @@ export default function Chat() {
                                     <span className="mr-1">●</span>
                                     {isOpponentOnline ? "Online" : "Offline"}
                                 </p>
-                            )}
-
-                        {typingUser && (
-                            <p className="text-sm text-green-600">
-                                {typingUser} is typing...
-                            </p>
+                            )
                         )}
                     </div>
                 </div>

@@ -68,7 +68,7 @@ export default function ChatInput({
                 value={text}
                 onChange={handleChange}
                 placeholder="Type a message..."
-                className="flex-1 min-w-0 border rounded-lg px-3 sm:px-4 py-3 outline-none text-sm sm:text-base"
+                className="flex-1 min-w-0 border rounded-lg px-3 sm:px-4 py-3 outline-none text-base"
             />
             <button
                 type="submit"
