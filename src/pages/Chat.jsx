@@ -55,6 +55,20 @@ import GroupInfoModal from "../components/GroupInfoModal";
 import CallModal from "../components/CallModal";
 
 
+const getInitials = (name) => {
+    if (!name) {
+        return "?";
+    }
+    return name
+        .trim()
+        .split(" ")
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+};
+
+
 export default function Chat() {
 
     const navigate = useNavigate();
@@ -259,6 +273,12 @@ export default function Chat() {
 
     }, [currentUserEmail, findMemberName]);
 
+    const handleCallSignalRef = useRef(handleCallSignal);
+
+    useEffect(() => {
+        handleCallSignalRef.current = handleCallSignal;
+    }, [handleCallSignal]);
+
     useEffect(() => {
         initWebRTC({
             sendSignalFn: sendCallSignal,
@@ -293,7 +313,7 @@ export default function Chat() {
     }, []);
 
     useEffect(() => {
-        connectWebSocket(handleCallSignal);
+        connectWebSocket((data) => handleCallSignalRef.current(data));
 
         loadRooms();
         loadOnlineUsers();
@@ -303,7 +323,7 @@ export default function Chat() {
         return () => {
             clearInterval(interval);
         };
-    }, [loadRooms, loadOnlineUsers, handleCallSignal]);
+    }, []);
 
     useEffect(() => {
         if (!selectedRoom) {
@@ -587,37 +607,53 @@ export default function Chat() {
                                 setShowGroupInfo(true);
                             }
                         }}
-                        className={`flex-1 min-w-0 text-left ${
+                        className={`flex items-center gap-3 flex-1 min-w-0 text-left ${
                             isGroupOrChannel ? "cursor-pointer" : "cursor-default"
                         }`}
                     >
-                        <h2 className="text-xl font-bold truncate text-gray-900 dark:text-stone-100">
-                            {displayRoomName}
-                        </h2>
-
-                        {typingUser ? (
-                            <p className="text-sm text-green-600 dark:text-green-400">
-                                {typingDisplayName} is typing...
-                            </p>
-                        ) : isGroupOrChannel ? (
-                            <p className="text-sm text-gray-400 dark:text-stone-500">
-                                {selectedRoomData?.members?.length || 0} members
-                            </p>
-                        ) : (
-                            selectedRoomType === "CHAT" &&
-                            selectedRoomData?.otherUserEmail && (
-                                <p
-                                    className={`text-sm ${
-                                        isOpponentOnline
-                                            ? "text-green-600 dark:text-green-400"
-                                            : "text-gray-400 dark:text-stone-500"
-                                    }`}
-                                >
-                                    <span className="mr-1">●</span>
-                                    {isOpponentOnline ? "Online" : "Offline"}
-                                </p>
+                        {selectedRoomData && (
+                            selectedRoomType === "CHAT" && selectedRoomData.otherUserPhoto ? (
+                                <img
+                                    src={selectedRoomData.otherUserPhoto}
+                                    alt={displayRoomName}
+                                    className="w-9 h-9 rounded-full object-cover border dark:border-stone-600 shrink-0"
+                                />
+                            ) : (
+                                <div className="w-9 h-9 rounded-full bg-teal-600 text-white flex items-center justify-center font-semibold text-sm shrink-0">
+                                    {getInitials(displayRoomName)}
+                                </div>
                             )
                         )}
+
+                        <div className="min-w-0">
+                            <h2 className="text-xl font-bold truncate text-gray-900 dark:text-stone-100">
+                                {displayRoomName}
+                            </h2>
+
+                            {typingUser ? (
+                                <p className="text-sm text-green-600 dark:text-green-400">
+                                    {typingDisplayName} is typing...
+                                </p>
+                            ) : isGroupOrChannel ? (
+                                <p className="text-sm text-gray-400 dark:text-stone-500">
+                                    {selectedRoomData?.members?.length || 0} members
+                                </p>
+                            ) : (
+                                selectedRoomType === "CHAT" &&
+                                selectedRoomData?.otherUserEmail && (
+                                    <p
+                                        className={`text-sm ${
+                                            isOpponentOnline
+                                                ? "text-green-600 dark:text-green-400"
+                                                : "text-gray-400 dark:text-stone-500"
+                                        }`}
+                                    >
+                                        <span className="mr-1">●</span>
+                                        {isOpponentOnline ? "Online" : "Offline"}
+                                    </p>
+                                )
+                            )}
+                        </div>
                     </button>
 
                     {canCall && (
