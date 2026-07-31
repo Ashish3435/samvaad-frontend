@@ -14,12 +14,12 @@ export default function MessageBubble({ message }) {
             <div
                 className={`max-w-md rounded-2xl px-4 py-3 shadow ${
                     isMe
-                        ? "bg-blue-600 text-white"
-                        : "bg-white"
+                        ? "bg-gradient-to-br from-[#7F77DD] to-[#D4537E] text-white"
+                        : "bg-white dark:bg-stone-800 text-gray-900 dark:text-stone-100"
                 }`}
             >
                 {!isMe && (
-                    <p className="font-bold text-blue-600 mb-1">
+                    <p className="font-bold text-blue-600 dark:text-teal-400 mb-1">
                         {message.senderName}
                     </p>
                 )}
@@ -31,8 +31,8 @@ export default function MessageBubble({ message }) {
                 <div
                     className={`flex items-center justify-end gap-1 text-xs mt-2 ${
                         isMe
-                            ? "text-blue-100"
-                            : "text-gray-400"
+                            ? "text-pink-100"
+                            : "text-gray-400 dark:text-stone-500"
                     }`}
                 >
                     <span>
@@ -49,7 +49,7 @@ export default function MessageBubble({ message }) {
                             className={
                                 message.seen
                                     ? "text-white font-bold"
-                                    : "text-blue-200"
+                                    : "text-pink-200"
                             }
                         >
                             {message.seen ? "✓✓" : "✓"}

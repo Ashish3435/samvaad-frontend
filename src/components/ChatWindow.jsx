@@ -5,7 +5,7 @@ export default function ChatWindow({
                                        bottomRef,
                                    }) {
     return (
-        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4">
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4 bg-slate-50 dark:bg-stone-950">
             {messages.map((message) => (
                 <MessageBubble
                     key={message.id}

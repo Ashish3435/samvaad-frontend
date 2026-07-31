@@ -87,19 +87,16 @@ export default function RoomList({
     return (
 
         <>
-
             <div className="mb-6">
-
                 <div className="flex justify-between items-center mb-3">
-
-                    <h3 className="font-bold text-lg">
+                    <h3 className="font-bold text-lg text-gray-900 dark:text-stone-100">
                         {title}
                     </h3>
 
                     {isChats && (
                         <button
                             onClick={onNewChat}
-                            className="text-blue-600 text-2xl font-bold cursor-pointer hover:text-blue-800"
+                            className="text-blue-600 dark:text-teal-400 text-2xl font-bold cursor-pointer hover:text-blue-800 dark:hover:text-teal-300"
                         >
                             +
                         </button>
@@ -108,7 +105,7 @@ export default function RoomList({
                     {isGroups && (
                         <button
                             onClick={() => setShowGroupModal(true)}
-                            className="text-blue-600 text-2xl font-bold cursor-pointer hover:text-blue-800"
+                            className="text-blue-600 dark:text-teal-400 text-2xl font-bold cursor-pointer hover:text-blue-800 dark:hover:text-teal-300"
                         >
                             +
                         </button>
@@ -117,7 +114,7 @@ export default function RoomList({
                     {isChannels && (
                         <button
                             onClick={() => setShowChannelModal(true)}
-                            className="text-blue-600 text-2xl font-bold cursor-pointer hover:text-blue-800"
+                            className="text-blue-600 dark:text-teal-400 text-2xl font-bold cursor-pointer hover:text-blue-800 dark:hover:text-teal-300"
                         >
                             +
                         </button>
@@ -127,7 +124,7 @@ export default function RoomList({
 
                 {rooms.length === 0 ? (
 
-                    <p className="text-gray-400">
+                    <p className="text-gray-400 dark:text-stone-500">
                         No rooms
                     </p>
 
@@ -149,12 +146,11 @@ export default function RoomList({
                                 truncate
                                 ${
                                 selectedRoom === room.roomCode
-                                    ? "bg-blue-600 text-white"
-                                    : "border hover:bg-blue-50"
+                                    ? "bg-[#993556] text-white"
+                                    : "border dark:border-stone-700 text-gray-900 dark:text-stone-100 hover:bg-blue-50 dark:hover:bg-stone-800"
                             }
                             `}
                         >
-
                             {
                                 room.roomType === "CHAT"
                                     ? (room.otherUserName || room.roomName)
@@ -162,7 +158,6 @@ export default function RoomList({
                             }
 
                         </div>
-
                     ))
 
                 )}
@@ -177,7 +172,6 @@ export default function RoomList({
                     }
                     onCreate={createGroup}
                 />
-
             )}
 
             {showChannelModal && (
@@ -188,11 +182,9 @@ export default function RoomList({
                     }
                     onCreate={createChannel}
                 />
-
             )}
 
         </>
-
     );
 
 }

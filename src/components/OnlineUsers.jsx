@@ -24,21 +24,15 @@ export default function OnlineUsers({
     return (
 
         <div>
-
-            <h3 className="font-bold text-lg mb-3">
-
+            <h3 className="font-bold text-lg mb-3 text-gray-900 dark:text-stone-100">
                 Online Users
-
             </h3>
 
             <div className="space-y-2">
-
                 {visibleUsers.length === 0 ? (
 
-                    <p className="text-gray-400">
-
+                    <p className="text-gray-400 dark:text-stone-500">
                         No online users
-
                     </p>
 
                 ) : (
@@ -46,31 +40,21 @@ export default function OnlineUsers({
                     visibleUsers.map((user) => (
 
                         <div
-
                             key={user.email}
 
-                            className="flex items-center gap-3 bg-white border rounded-lg p-3 shadow-sm"
-
+                            className="flex items-center gap-3 bg-white dark:bg-stone-800 border dark:border-stone-700 rounded-lg p-3 shadow-sm text-gray-900 dark:text-stone-100"
                         >
-
                             <div className="w-3 h-3 rounded-full bg-green-500"></div>
-
                             <span>
-
                                 {user.fullName}
-
                             </span>
-
                         </div>
-
                     ))
 
                 )}
 
             </div>
-
         </div>
-
     );
 
 }

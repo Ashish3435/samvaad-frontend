@@ -40,3 +40,51 @@ export const createPrivateRoom = async (
     return response.data;
 
 };
+
+export const addMember = async (
+    roomCode,
+    email
+) => {
+
+    const response =
+        await api.post(`/rooms/${roomCode}/members`, {
+
+            email,
+
+        });
+
+    return response.data;
+
+};
+
+export const removeMember = async (
+    roomCode,
+    email
+) => {
+
+    const response =
+        await api.delete(`/rooms/${roomCode}/members`, {
+
+            data: { email },
+
+        });
+
+    return response.data;
+
+};
+
+export const promoteToAdmin = async (
+    roomCode,
+    email
+) => {
+
+    const response =
+        await api.post(`/rooms/${roomCode}/promote`, {
+
+            email,
+
+        });
+
+    return response.data;
+
+};
