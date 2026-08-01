@@ -55,6 +55,8 @@ import GroupInfoModal from "../components/GroupInfoModal";
 import CallModal from "../components/CallModal";
 
 
+const SELECTED_ROOM_KEY = "selectedRoom";
+
 const getInitials = (name) => {
     if (!name) {
         return "?";
@@ -77,7 +79,9 @@ export default function Chat() {
     const [messages, setMessages] = useState([]);
     const [onlineUsers, setOnlineUsers] = useState([]);
     const [rooms, setRooms] = useState([]);
-    const [selectedRoom, setSelectedRoom] = useState("");
+    const [selectedRoom, setSelectedRoom] = useState(
+        () => sessionStorage.getItem(SELECTED_ROOM_KEY) || ""
+    );
     const [showNewChat, setShowNewChat] = useState(false);
     const [typingUser, setTypingUser] = useState("");
     const [showGroupInfo, setShowGroupInfo] = useState(false);
@@ -92,6 +96,14 @@ export default function Chat() {
     const [viewportHeight, setViewportHeight] = useState(
         window.visualViewport?.height || window.innerHeight
     );
+
+    useEffect(() => {
+        if (selectedRoom) {
+            sessionStorage.setItem(SELECTED_ROOM_KEY, selectedRoom);
+        } else {
+            sessionStorage.removeItem(SELECTED_ROOM_KEY);
+        }
+    }, [selectedRoom]);
 
     useEffect(() => {
         const viewport = window.visualViewport;
@@ -115,6 +127,9 @@ export default function Chat() {
             const data = await getRooms();
             setRooms(data);
 
+            /* Keep the current selection only if it still exists.
+               No auto-selecting the first room anymore — an empty
+               selection just means "show the chat list" (home). */
             setSelectedRoom((currentSelectedRoom) => {
                 if (
                     currentSelectedRoom &&
@@ -122,7 +137,7 @@ export default function Chat() {
                 ) {
                     return currentSelectedRoom;
                 }
-                return data.length > 0 ? data[0].roomCode : "";
+                return "";
             });
         } catch (error) {
             console.error("ROOM ERROR:", error);
@@ -435,6 +450,7 @@ export default function Chat() {
     const handleLogout = () => {
         endCall();
         disconnectWebSocket();
+        sessionStorage.removeItem(SELECTED_ROOM_KEY);
         logout();
         navigate("/login");
     };
@@ -593,97 +609,103 @@ export default function Chat() {
                     selectedRoom ? "flex" : "hidden md:flex"
                 } flex-1 flex-col min-w-0`}
             >
-                <div className="bg-white dark:bg-stone-900 border-b dark:border-stone-700 px-5 py-3 flex items-center gap-3 shrink-0">
-                    <button
-                        onClick={() => setSelectedRoom("")}
-                        className="md:hidden text-blue-600 dark:text-teal-400 font-bold text-xl px-1"
-                    >
-                        ←
-                    </button>
+                {selectedRoom ? (
+                    <>
+                        <div className="bg-white dark:bg-stone-900 border-b dark:border-stone-700 px-5 py-3 flex items-center gap-3 shrink-0">
+                            <button
+                                onClick={() => setSelectedRoom("")}
+                                className="md:hidden text-blue-600 dark:text-teal-400 font-bold text-xl px-1"
+                            >
+                                ←
+                            </button>
 
-                    <button
-                        onClick={() => {
-                            if (isGroupOrChannel) {
-                                setShowGroupInfo(true);
-                            }
-                        }}
-                        className={`flex items-center gap-3 flex-1 min-w-0 text-left ${
-                            isGroupOrChannel ? "cursor-pointer" : "cursor-default"
-                        }`}
-                    >
-                        {selectedRoomData && (
-                            selectedRoomType === "CHAT" && selectedRoomData.otherUserPhoto ? (
-                                <img
-                                    src={selectedRoomData.otherUserPhoto}
-                                    alt={displayRoomName}
-                                    className="w-9 h-9 rounded-full object-cover border dark:border-stone-600 shrink-0"
-                                />
-                            ) : (
-                                <div className="w-9 h-9 rounded-full bg-teal-600 text-white flex items-center justify-center font-semibold text-sm shrink-0">
-                                    {getInitials(displayRoomName)}
+                            <button
+                                onClick={() => {
+                                    if (isGroupOrChannel) {
+                                        setShowGroupInfo(true);
+                                    }
+                                }}
+                                className={`flex items-center gap-3 flex-1 min-w-0 text-left ${
+                                    isGroupOrChannel ? "cursor-pointer" : "cursor-default"
+                                }`}
+                            >
+                                {selectedRoomType === "CHAT" && selectedRoomData.otherUserPhoto ? (
+                                    <img
+                                        src={selectedRoomData.otherUserPhoto}
+                                        alt={displayRoomName}
+                                        className="w-9 h-9 rounded-full object-cover border dark:border-stone-600 shrink-0"
+                                    />
+                                ) : (
+                                    <div className="w-9 h-9 rounded-full bg-teal-600 text-white flex items-center justify-center font-semibold text-sm shrink-0">
+                                        {getInitials(displayRoomName)}
+                                    </div>
+                                )}
+
+                                <div className="min-w-0">
+                                    <h2 className="text-xl font-bold truncate text-gray-900 dark:text-stone-100">
+                                        {displayRoomName}
+                                    </h2>
+
+                                    {typingUser ? (
+                                        <p className="text-sm text-green-600 dark:text-green-400">
+                                            {typingDisplayName} is typing...
+                                        </p>
+                                    ) : isGroupOrChannel ? (
+                                        <p className="text-sm text-gray-400 dark:text-stone-500">
+                                            {selectedRoomData?.members?.length || 0} members
+                                        </p>
+                                    ) : (
+                                        selectedRoomType === "CHAT" &&
+                                        selectedRoomData?.otherUserEmail && (
+                                            <p
+                                                className={`text-sm ${
+                                                    isOpponentOnline
+                                                        ? "text-green-600 dark:text-green-400"
+                                                        : "text-gray-400 dark:text-stone-500"
+                                                }`}
+                                            >
+                                                <span className="mr-1">●</span>
+                                                {isOpponentOnline ? "Online" : "Offline"}
+                                            </p>
+                                        )
+                                    )}
                                 </div>
-                            )
-                        )}
+                            </button>
 
-                        <div className="min-w-0">
-                            <h2 className="text-xl font-bold truncate text-gray-900 dark:text-stone-100">
-                                {displayRoomName}
-                            </h2>
-
-                            {typingUser ? (
-                                <p className="text-sm text-green-600 dark:text-green-400">
-                                    {typingDisplayName} is typing...
-                                </p>
-                            ) : isGroupOrChannel ? (
-                                <p className="text-sm text-gray-400 dark:text-stone-500">
-                                    {selectedRoomData?.members?.length || 0} members
-                                </p>
-                            ) : (
-                                selectedRoomType === "CHAT" &&
-                                selectedRoomData?.otherUserEmail && (
-                                    <p
-                                        className={`text-sm ${
-                                            isOpponentOnline
-                                                ? "text-green-600 dark:text-green-400"
-                                                : "text-gray-400 dark:text-stone-500"
-                                        }`}
+                            {canCall && (
+                                <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                        onClick={() => startCall("audio")}
+                                        className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-stone-400 hover:bg-gray-100 dark:hover:bg-stone-800"
+                                        aria-label="Voice call"
                                     >
-                                        <span className="mr-1">●</span>
-                                        {isOpponentOnline ? "Online" : "Offline"}
-                                    </p>
-                                )
+                                        📞
+                                    </button>
+
+                                    <button
+                                        onClick={() => startCall("video")}
+                                        className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-stone-400 hover:bg-gray-100 dark:hover:bg-stone-800"
+                                        aria-label="Video call"
+                                    >
+                                        🎥
+                                    </button>
+                                </div>
                             )}
                         </div>
-                    </button>
 
-                    {canCall && (
-                        <div className="flex items-center gap-1 shrink-0">
-                            <button
-                                onClick={() => startCall("audio")}
-                                className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-stone-400 hover:bg-gray-100 dark:hover:bg-stone-800"
-                                aria-label="Voice call"
-                            >
-                                📞
-                            </button>
+                        <ChatWindow messages={messages} bottomRef={bottomRef} />
 
-                            <button
-                                onClick={() => startCall("video")}
-                                className="w-9 h-9 rounded-full flex items-center justify-center text-gray-500 dark:text-stone-400 hover:bg-gray-100 dark:hover:bg-stone-800"
-                                aria-label="Video call"
-                            >
-                                🎥
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <ChatWindow messages={messages} bottomRef={bottomRef} />
-
-                <ChatInput
-                    onSend={handleSend}
-                    roomCode={selectedRoom}
-                    canSend={canSend}
-                />
+                        <ChatInput
+                            onSend={handleSend}
+                            roomCode={selectedRoom}
+                            canSend={canSend}
+                        />
+                    </>
+                ) : (
+                    <div className="hidden md:flex flex-1 items-center justify-center text-gray-400 dark:text-stone-500">
+                        Select a chat to start messaging
+                    </div>
+                )}
             </div>
 
             {showNewChat && (
