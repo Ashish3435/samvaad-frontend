@@ -163,7 +163,7 @@ export default function GroupInfoModal({
                                             </span>
                                         )}
 
-                                        {room.isAdmin && !member.admin && (
+                                        {room.admin && !member.admin && (
                                             <button
                                                 onClick={() => handlePromote(member.email)}
                                                 disabled={isMemberBusy}
@@ -173,7 +173,7 @@ export default function GroupInfoModal({
                                             </button>
                                         )}
 
-                                        {room.isAdmin && !isSelf && (
+                                        {room.admin && !isSelf && (
                                             <button
                                                 onClick={() => handleRemoveMember(member.email)}
                                                 disabled={isMemberBusy}
@@ -188,7 +188,7 @@ export default function GroupInfoModal({
                         })}
                     </div>
 
-                    {room.isAdmin && (
+                    {room.admin && (
                         <div>
                             {!showAddPanel ? (
                                 <button

@@ -561,7 +561,7 @@ export default function Chat() {
 
     const canSend =
         selectedRoomType === "CHANNEL"
-            ? Boolean(selectedRoomData?.isAdmin)
+            ? Boolean(selectedRoomData?.admin)
             : true;
 
     const isGroupOrChannel =
