@@ -5,6 +5,8 @@ const ICE_SERVERS = [
     { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
 ];
 
+const VIDEO_MAX_BITRATE = 1_500_000;
+
 let localStream = null;
 let peerConnections = {};
 let sendSignal = null;
@@ -19,8 +21,20 @@ export const initWebRTC = ({ sendSignalFn, onRemoteStreamFn, onPeerLeftFn }) => 
 
 export const getLocalStream = async (callType) => {
     const constraints = {
-        audio: true,
-        video: callType === "video"
+        audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+        },
+        video:
+            callType === "video"
+                ? {
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    frameRate: { ideal: 30 },
+                    facingMode: "user"
+                }
+                : false
     };
 
     localStream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -28,6 +42,24 @@ export const getLocalStream = async (callType) => {
 };
 
 export const getLocalStreamRef = () => localStream;
+
+const boostVideoBitrate = (pc) => {
+    pc.getSenders().forEach((sender) => {
+        if (!sender.track || sender.track.kind !== "video") {
+            return;
+        }
+
+        const params = sender.getParameters();
+
+        if (!params.encodings || params.encodings.length === 0) {
+            params.encodings = [{}];
+        }
+
+        params.encodings[0].maxBitrate = VIDEO_MAX_BITRATE;
+
+        sender.setParameters(params).catch(() => {});
+    });
+};
 
 const createPeerConnection = (peerEmail) => {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
@@ -76,6 +108,8 @@ export const createOfferTo = async (peerEmail) => {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
+    boostVideoBitrate(pc);
+
     sendSignal({
         type: "webrtc-offer",
         targetEmail: peerEmail,
@@ -90,6 +124,8 @@ export const handleOffer = async (peerEmail, sdp) => {
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
 
+    boostVideoBitrate(pc);
+
     sendSignal({
         type: "webrtc-answer",
         targetEmail: peerEmail,
@@ -103,6 +139,7 @@ export const handleAnswer = async (peerEmail, sdp) => {
         return;
     }
     await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    boostVideoBitrate(pc);
 };
 
 export const handleIceCandidate = async (peerEmail, candidate) => {

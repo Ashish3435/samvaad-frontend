@@ -93,6 +93,12 @@ export default function Chat() {
 
     const currentUserEmail = getCurrentUser()?.trim().toLowerCase();
 
+    const selectedRoomRef = useRef(selectedRoom);
+
+    useEffect(() => {
+        selectedRoomRef.current = selectedRoom;
+    }, [selectedRoom]);
+
     const [viewportHeight, setViewportHeight] = useState(
         window.visualViewport?.height || window.innerHeight
     );
@@ -122,14 +128,17 @@ export default function Chat() {
         };
     }, []);
 
+    useEffect(() => {
+        if ("Notification" in window && Notification.permission === "default") {
+            Notification.requestPermission();
+        }
+    }, []);
+
     const loadRooms = useCallback(async () => {
         try {
             const data = await getRooms();
             setRooms(data);
 
-            /* Keep the current selection only if it still exists.
-               No auto-selecting the first room anymore — an empty
-               selection just means "show the chat list" (home). */
             setSelectedRoom((currentSelectedRoom) => {
                 if (
                     currentSelectedRoom &&
@@ -176,6 +185,46 @@ export default function Chat() {
         },
         [rooms]
     );
+
+    const handleNotification = useCallback((message) => {
+
+        setRooms((previousRooms) => {
+            const updated = previousRooms.map((room) => {
+                if (room.roomCode === message.roomCode) {
+                    return { ...room, lastMessageAt: message.sentAt };
+                }
+                return room;
+            });
+
+            return [...updated].sort((a, b) => {
+                if (!a.lastMessageAt && !b.lastMessageAt) return 0;
+                if (!a.lastMessageAt) return 1;
+                if (!b.lastMessageAt) return -1;
+                return new Date(b.lastMessageAt) - new Date(a.lastMessageAt);
+            });
+        });
+
+        const isRoomOpen = selectedRoomRef.current === message.roomCode;
+        const isTabHidden = document.visibilityState === "hidden";
+
+        if (
+            (!isRoomOpen || isTabHidden) &&
+            "Notification" in window &&
+            Notification.permission === "granted"
+        ) {
+            const notification = new Notification(message.senderName || "New message", {
+                body: message.content,
+                icon: "/favicon.ico",
+                tag: message.roomCode
+            });
+
+            notification.onclick = () => {
+                window.focus();
+                setSelectedRoom(message.roomCode);
+                notification.close();
+            };
+        }
+    }, []);
 
     const handleCallSignal = useCallback(async (data) => {
 
@@ -289,10 +338,15 @@ export default function Chat() {
     }, [currentUserEmail, findMemberName]);
 
     const handleCallSignalRef = useRef(handleCallSignal);
+    const handleNotificationRef = useRef(handleNotification);
 
     useEffect(() => {
         handleCallSignalRef.current = handleCallSignal;
     }, [handleCallSignal]);
+
+    useEffect(() => {
+        handleNotificationRef.current = handleNotification;
+    }, [handleNotification]);
 
     useEffect(() => {
         initWebRTC({
@@ -328,7 +382,10 @@ export default function Chat() {
     }, []);
 
     useEffect(() => {
-        connectWebSocket((data) => handleCallSignalRef.current(data));
+        connectWebSocket(
+            (data) => handleCallSignalRef.current(data),
+            (data) => handleNotificationRef.current(data)
+        );
 
         loadRooms();
         loadOnlineUsers();

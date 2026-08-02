@@ -16,9 +16,8 @@ let roomSubscriptions = {
 };
 
 let callSubscription = null;
+let notificationSubscription = null;
 
-/* Runs immediately if already connected, otherwise queues
-   until the connection finishes establishing */
 const runWhenConnected = (action) => {
     if (isConnected) {
         action();
@@ -27,13 +26,9 @@ const runWhenConnected = (action) => {
     }
 };
 
-/* CONNECT ONCE — call this at login / app start.
-   Stays alive across room switches so incoming calls
-   and messages can arrive no matter what you're viewing. */
-export const connectWebSocket = (onCallSignal) => {
+export const connectWebSocket = (onCallSignal, onNotification) => {
 
     if (stompClient) {
-        // already connected or connecting
         return;
     }
 
@@ -62,8 +57,6 @@ export const connectWebSocket = (onCallSignal) => {
 
             isConnected = true;
 
-            /* GLOBAL CALL SIGNAL SUBSCRIPTION —
-               works regardless of which room is currently open */
             callSubscription = stompClient.subscribe(
                 "/user/queue/call",
                 (message) => {
@@ -74,9 +67,16 @@ export const connectWebSocket = (onCallSignal) => {
                 }
             );
 
-            /* FLUSH ANYTHING THAT WAS WAITING ON CONNECTION
-               (e.g. an initial room subscription requested
-               before the socket finished connecting) */
+            notificationSubscription = stompClient.subscribe(
+                "/user/queue/notifications",
+                (message) => {
+                    const data = JSON.parse(message.body);
+                    if (onNotification) {
+                        onNotification(data);
+                    }
+                }
+            );
+
             pendingActions.forEach((action) => action());
             pendingActions = [];
         },
@@ -97,9 +97,6 @@ export const connectWebSocket = (onCallSignal) => {
     stompClient.activate();
 };
 
-/* SWITCH ROOM — unsubscribes previous room's topics,
-   subscribes to the new room's topics. Does NOT disconnect
-   or reconnect the underlying socket. */
 export const subscribeToRoom = (
     roomCode,
     onMessage,
@@ -109,7 +106,6 @@ export const subscribeToRoom = (
 
     const doSubscribe = () => {
 
-        /* UNSUBSCRIBE PREVIOUS ROOM'S TOPICS FIRST */
         unsubscribeFromRoom();
 
         roomSubscriptions.message = stompClient.subscribe(
@@ -183,8 +179,6 @@ export const sendTyping = (data) => {
     });
 };
 
-/* CALL SIGNALING — invite / accept / reject / end /
-   webrtc offer / answer / ice candidate all go through this */
 export const sendCallSignal = (signal) => {
 
     if (!stompClient || !stompClient.connected) {
@@ -198,7 +192,6 @@ export const sendCallSignal = (signal) => {
     });
 };
 
-/* FULL TEARDOWN — call this at logout only */
 export const disconnectWebSocket = () => {
 
     unsubscribeFromRoom();
@@ -206,6 +199,11 @@ export const disconnectWebSocket = () => {
     if (callSubscription) {
         callSubscription.unsubscribe();
         callSubscription = null;
+    }
+
+    if (notificationSubscription) {
+        notificationSubscription.unsubscribe();
+        notificationSubscription = null;
     }
 
     if (stompClient) {

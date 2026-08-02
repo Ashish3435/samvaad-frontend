@@ -1,32 +1,31 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
-function ParticipantTile({ name, stream, isVideoCall }) {
-    const mediaRef = useRef(null);
+function VideoTile({ stream, muted, mirrored, className }) {
+    const videoRef = useRef(null);
 
     useEffect(() => {
-        if (mediaRef.current && stream) {
-            mediaRef.current.srcObject = stream;
+        if (videoRef.current && stream) {
+            videoRef.current.srcObject = stream;
         }
     }, [stream]);
 
-    if (isVideoCall) {
-        return (
-            <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                <video ref={mediaRef} autoPlay playsInline className="w-full h-full object-cover" />
-                <span className="absolute bottom-2 left-2 text-white text-sm bg-black/50 px-2 py-0.5 rounded">
-                    {name}
-                </span>
-            </div>
-        );
-    }
-
     return (
-        <div className="flex flex-col items-center justify-center bg-stone-800 rounded-lg p-6">
-            <audio ref={mediaRef} autoPlay />
-            <div className="w-16 h-16 rounded-full bg-teal-600 text-white flex items-center justify-center text-xl font-bold mb-2">
+        <video
+            ref={videoRef}
+            autoPlay
+            playsInline
+            muted={muted}
+            className={`${className} ${mirrored ? "scale-x-[-1]" : ""}`}
+        />
+    );
+}
+
+function AvatarTile({ name }) {
+    return (
+        <div className="w-full h-full flex items-center justify-center bg-stone-800">
+            <div className="w-16 h-16 rounded-full bg-teal-600 text-white flex items-center justify-center text-xl font-bold">
                 {name?.[0]?.toUpperCase() || "?"}
             </div>
-            <span className="text-white text-sm">{name}</span>
         </div>
     );
 }
@@ -42,20 +41,30 @@ export default function CallModal({
                                       onToggleMic,
                                       onToggleCamera
                                   }) {
-    const localVideoRef = useRef(null);
+    const [mainId, setMainId] = useState("local");
 
     useEffect(() => {
-        if (localVideoRef.current && localStream) {
-            localVideoRef.current.srcObject = localStream;
+        if (callState?.status === "in-call") {
+            const firstRemote = Object.keys(callState.participants || {})[0];
+            if (firstRemote) {
+                setMainId(firstRemote);
+            }
         }
-    }, [localStream]);
+    }, [callState?.status]);
+
+    useEffect(() => {
+        if (callState?.status === "in-call") {
+            document.documentElement.requestFullscreen?.().catch(() => {});
+        } else if (!callState && document.fullscreenElement) {
+            document.exitFullscreen?.().catch(() => {});
+        }
+    }, [callState]);
 
     if (!callState) {
         return null;
     }
 
     const isVideoCall = callState.callType === "video";
-    const participantEntries = Object.entries(callState.participants || {});
 
     if (callState.status === "ringing-incoming") {
         return (
@@ -120,58 +129,134 @@ export default function CallModal({
         );
     }
 
-    return (
-        <div className="fixed inset-0 bg-black/90 flex flex-col z-50 p-4">
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-y-auto content-start">
-                {participantEntries.map(([email, participant]) => (
-                    <ParticipantTile
-                        key={email}
-                        name={participant.name || email}
-                        stream={participant.stream}
-                        isVideoCall={isVideoCall}
-                    />
-                ))}
+    const remoteEntries = Object.entries(callState.participants || {});
 
-                {isVideoCall && (
-                    <div className="relative bg-black rounded-lg overflow-hidden aspect-video">
-                        <video
-                            ref={localVideoRef}
-                            autoPlay
-                            playsInline
-                            muted
-                            className="w-full h-full object-cover"
-                        />
-                        <span className="absolute bottom-2 left-2 text-white text-sm bg-black/50 px-2 py-0.5 rounded">
-                            You
-                        </span>
-                    </div>
+    if (!isVideoCall) {
+        return (
+            <div className="fixed inset-0 bg-black z-50 flex flex-col">
+                <div className="flex-1 flex flex-wrap items-center justify-center gap-6 p-6">
+                    {remoteEntries.map(([email, participant]) => (
+                        <div key={email} className="flex flex-col items-center gap-2">
+                            <div className="w-24 h-24 rounded-full bg-teal-600 text-white flex items-center justify-center text-3xl font-bold">
+                                {participant.name?.[0]?.toUpperCase() || "?"}
+                            </div>
+                            <span className="text-white text-sm">{participant.name}</span>
+                            <VideoTile
+                                stream={participant.stream}
+                                muted={false}
+                                className="hidden"
+                            />
+                        </div>
+                    ))}
+                </div>
+
+                <div className="flex justify-center gap-4 py-6">
+                    <button
+                        onClick={onToggleMic}
+                        className={`w-14 h-14 rounded-full flex items-center justify-center text-white text-xl ${
+                            micOn ? "bg-stone-700" : "bg-red-600"
+                        }`}
+                    >
+                        {micOn ? "🎤" : "🔇"}
+                    </button>
+
+                    <button
+                        onClick={onEnd}
+                        className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center text-white text-2xl"
+                    >
+                        ✕
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    const allTiles = [
+        {
+            id: "local",
+            name: "You",
+            stream: localStream,
+            isLocal: true
+        },
+        ...remoteEntries.map(([email, participant]) => ({
+            id: email,
+            name: participant.name || email,
+            stream: participant.stream,
+            isLocal: false
+        }))
+    ];
+
+    const main = allTiles.find((tile) => tile.id === mainId) || allTiles[0];
+    const thumbnails = allTiles.filter((tile) => tile.id !== main.id);
+
+    return (
+        <div className="fixed inset-0 bg-black z-50">
+            <div className="absolute inset-0">
+                {main.stream ? (
+                    <VideoTile
+                        stream={main.stream}
+                        muted={main.isLocal}
+                        mirrored={main.isLocal}
+                        className="w-full h-full object-cover"
+                    />
+                ) : (
+                    <AvatarTile name={main.name} />
                 )}
+
+                <span className="absolute top-4 left-4 text-white text-sm bg-black/50 px-3 py-1 rounded-full">
+                    {main.name}
+                </span>
             </div>
 
-            <div className="flex justify-center gap-4 py-4">
+            {thumbnails.length > 0 && (
+                <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+                    {thumbnails.map((tile) => (
+                        <button
+                            key={tile.id}
+                            onClick={() => setMainId(tile.id)}
+                            className="w-24 h-32 sm:w-28 sm:h-36 rounded-xl overflow-hidden border-2 border-white/30 shadow-lg relative"
+                        >
+                            {tile.stream ? (
+                                <VideoTile
+                                    stream={tile.stream}
+                                    muted={tile.isLocal}
+                                    mirrored={tile.isLocal}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <AvatarTile name={tile.name} />
+                            )}
+
+                            <span className="absolute bottom-1 left-1 text-white text-xs bg-black/50 px-2 py-0.5 rounded">
+                                {tile.name}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            <div className="absolute bottom-0 inset-x-0 flex justify-center gap-4 py-6 bg-gradient-to-t from-black/70 to-transparent">
                 <button
                     onClick={onToggleMic}
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-lg ${
-                        micOn ? "bg-stone-700" : "bg-red-600"
+                    className={`w-14 h-14 rounded-full flex items-center justify-center text-white text-xl ${
+                        micOn ? "bg-stone-700/80" : "bg-red-600"
                     }`}
                 >
                     {micOn ? "🎤" : "🔇"}
                 </button>
 
-                {isVideoCall && (
-                    <button
-                        onClick={onToggleCamera}
-                        className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-lg ${
-                            cameraOn ? "bg-stone-700" : "bg-red-600"
-                        }`}
-                    >
-                        {cameraOn ? "📹" : "🚫"}
-                    </button>
-                )}
+                <button
+                    onClick={onToggleCamera}
+                    className={`w-14 h-14 rounded-full flex items-center justify-center text-white text-xl ${
+                        cameraOn ? "bg-stone-700/80" : "bg-red-600"
+                    }`}
+                >
+                    {cameraOn ? "📹" : "🚫"}
+                </button>
 
                 <button
                     onClick={onEnd}
-                    className="w-12 h-12 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center text-white text-xl"
+                    className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center text-white text-2xl"
                 >
                     ✕
                 </button>
