@@ -143,7 +143,10 @@ export default function RoomList({
                                 cursor-pointer
                                 mb-2
                                 transition
-                                truncate
+                                flex
+                                items-center
+                                justify-between
+                                gap-2
                                 ${
                                 selectedRoom === room.roomCode
                                     ? "bg-[#993556] text-white"
@@ -151,12 +154,25 @@ export default function RoomList({
                             }
                             `}
                         >
-                            {
-                                room.roomType === "CHAT"
-                                    ? (room.otherUserName || room.roomName)
-                                    : room.roomName
-                            }
+                            <span className="truncate">
+                                {
+                                    room.roomType === "CHAT"
+                                        ? (room.otherUserName || room.roomName)
+                                        : room.roomName
+                                }
+                            </span>
 
+                            {room.unreadCount > 0 && (
+                                <span
+                                    className={`shrink-0 min-w-[20px] h-5 px-1.5 rounded-full text-xs font-semibold flex items-center justify-center ${
+                                        selectedRoom === room.roomCode
+                                            ? "bg-white text-[#993556]"
+                                            : "bg-[#993556] text-white"
+                                    }`}
+                                >
+                                    {room.unreadCount > 99 ? "99+" : room.unreadCount}
+                                </span>
+                            )}
                         </div>
                     ))
 

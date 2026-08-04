@@ -70,6 +70,13 @@ const getInitials = (name) => {
         .toUpperCase();
 };
 
+const notifyIfAllowed = (title, options) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+        return new Notification(title, options);
+    }
+    return null;
+};
+
 
 export default function Chat() {
 
@@ -94,10 +101,15 @@ export default function Chat() {
     const currentUserEmail = getCurrentUser()?.trim().toLowerCase();
 
     const selectedRoomRef = useRef(selectedRoom);
+    const roomsRef = useRef(rooms);
 
     useEffect(() => {
         selectedRoomRef.current = selectedRoom;
     }, [selectedRoom]);
+
+    useEffect(() => {
+        roomsRef.current = rooms;
+    }, [rooms]);
 
     const [viewportHeight, setViewportHeight] = useState(
         window.visualViewport?.height || window.innerHeight
@@ -188,12 +200,26 @@ export default function Chat() {
 
     const handleNotification = useCallback((message) => {
 
+        const room = roomsRef.current.find(
+            (r) => r.roomCode === message.roomCode
+        );
+
+        const isRoomOpen = selectedRoomRef.current === message.roomCode;
+        const isTabHidden = document.visibilityState === "hidden";
+        const shouldBumpUnread = !isRoomOpen;
+
         setRooms((previousRooms) => {
-            const updated = previousRooms.map((room) => {
-                if (room.roomCode === message.roomCode) {
-                    return { ...room, lastMessageAt: message.sentAt };
+            const updated = previousRooms.map((r) => {
+                if (r.roomCode !== message.roomCode) {
+                    return r;
                 }
-                return room;
+                return {
+                    ...r,
+                    lastMessageAt: message.sentAt,
+                    unreadCount: shouldBumpUnread
+                        ? (r.unreadCount || 0) + 1
+                        : r.unreadCount
+                };
             });
 
             return [...updated].sort((a, b) => {
@@ -204,20 +230,29 @@ export default function Chat() {
             });
         });
 
-        const isRoomOpen = selectedRoomRef.current === message.roomCode;
-        const isTabHidden = document.visibilityState === "hidden";
+        if (isRoomOpen && !isTabHidden) {
+            return;
+        }
 
-        if (
-            (!isRoomOpen || isTabHidden) &&
-            "Notification" in window &&
-            Notification.permission === "granted"
-        ) {
-            const notification = new Notification(message.senderName || "New message", {
-                body: message.content,
-                icon: "/favicon.ico",
-                tag: message.roomCode
-            });
+        const isGroupOrChannel =
+            room?.roomType === "GROUP" || room?.roomType === "CHANNEL";
 
+        const title = message.mentioned
+            ? `${message.senderName} mentioned you`
+            : isGroupOrChannel
+                ? `${message.senderName} in ${room?.roomName || "group"}`
+                : message.senderName || "New message";
+
+        const notification = notifyIfAllowed(title, {
+            body: message.content,
+            icon: "/favicon.ico",
+            tag: message.mentioned
+                ? `mention-${message.roomCode}-${message.id}`
+                : message.roomCode,
+            requireInteraction: Boolean(message.mentioned)
+        });
+
+        if (notification) {
             notification.onclick = () => {
                 window.focus();
                 setSelectedRoom(message.roomCode);
@@ -235,12 +270,34 @@ export default function Chat() {
                     if (prev) {
                         return prev;
                     }
+
+                    const callerName = findMemberName(data.targetEmail);
+
+                    if (document.visibilityState === "hidden") {
+                        const notification = notifyIfAllowed(
+                            `Incoming ${data.callType === "video" ? "video" : "voice"} call`,
+                            {
+                                body: `${callerName} is calling you`,
+                                icon: "/favicon.ico",
+                                tag: `call-${data.roomCode}`,
+                                requireInteraction: true
+                            }
+                        );
+
+                        if (notification) {
+                            notification.onclick = () => {
+                                window.focus();
+                                notification.close();
+                            };
+                        }
+                    }
+
                     return {
                         status: "ringing-incoming",
                         roomCode: data.roomCode,
                         callType: data.callType,
                         callerEmail: data.targetEmail,
-                        callerName: findMemberName(data.targetEmail),
+                        callerName,
                         participants: {}
                     };
                 });
@@ -411,6 +468,14 @@ export default function Chat() {
             console.error("MARK SEEN ERROR:", error);
         });
 
+        setRooms((previousRooms) =>
+            previousRooms.map((room) =>
+                room.roomCode === selectedRoom
+                    ? { ...room, unreadCount: 0 }
+                    : room
+            )
+        );
+
         subscribeToRoom(
             selectedRoom,
 
@@ -499,7 +564,9 @@ export default function Chat() {
     const handleRoomUpdated = (updatedRoom) => {
         setRooms((previousRooms) =>
             previousRooms.map((room) =>
-                room.roomCode === updatedRoom.roomCode ? updatedRoom : room
+                room.roomCode === updatedRoom.roomCode
+                    ? { ...updatedRoom, unreadCount: room.unreadCount }
+                    : room
             )
         );
     };
