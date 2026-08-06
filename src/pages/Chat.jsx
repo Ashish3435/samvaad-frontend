@@ -237,6 +237,12 @@ export default function Chat() {
         const isGroupOrChannel =
             room?.roomType === "GROUP" || room?.roomType === "CHANNEL";
 
+        const bodyText = message.content
+            ? message.content
+            : message.attachmentType?.startsWith("image/")
+                ? "📷 Photo"
+                : "📄 File";
+
         const title = message.mentioned
             ? `${message.senderName} mentioned you`
             : isGroupOrChannel
@@ -244,7 +250,7 @@ export default function Chat() {
                 : message.senderName || "New message";
 
         const notification = notifyIfAllowed(title, {
-            body: message.content,
+            body: bodyText,
             icon: "/favicon.ico",
             tag: message.mentioned
                 ? `mention-${message.roomCode}-${message.id}`
@@ -526,14 +532,21 @@ export default function Chat() {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    const handleSend = (text) => {
-        if (!text || !text.trim() || !selectedRoom) {
+    const handleSend = (text, attachment) => {
+        if ((!text || !text.trim()) && !attachment) {
+            return;
+        }
+
+        if (!selectedRoom) {
             return;
         }
 
         sendMessage({
             roomCode: selectedRoom,
-            content: text
+            content: text?.trim() || null,
+            attachmentData: attachment?.data || null,
+            attachmentType: attachment?.type || null,
+            attachmentName: attachment?.name || null
         });
     };
 

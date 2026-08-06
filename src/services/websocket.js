@@ -15,11 +15,13 @@ let roomSubscriptions = {
     seen: null
 };
 
+let currentRoomHandlers = null;
+
 let callSubscription = null;
 let notificationSubscription = null;
 
 const runWhenConnected = (action) => {
-    if (isConnected) {
+    if (isConnected && stompClient?.connected) {
         action();
     } else {
         pendingActions.push(action);
@@ -77,6 +79,20 @@ export const connectWebSocket = (onCallSignal, onNotification) => {
                 }
             );
 
+            /* If we were subscribed to a room before a reconnect,
+               re-establish that subscription now — otherwise messages
+               in the currently open room would silently stop arriving
+               after any connection drop (e.g. a brief network blip,
+               or the server dropping an oversized frame). */
+            if (currentRoomHandlers) {
+                doSubscribeToRoom(
+                    currentRoomHandlers.roomCode,
+                    currentRoomHandlers.onMessage,
+                    currentRoomHandlers.onTyping,
+                    currentRoomHandlers.onSeen
+                );
+            }
+
             pendingActions.forEach((action) => action());
             pendingActions = [];
         },
@@ -97,6 +113,40 @@ export const connectWebSocket = (onCallSignal, onNotification) => {
     stompClient.activate();
 };
 
+const doSubscribeToRoom = (
+    roomCode,
+    onMessage,
+    onTyping,
+    onSeen
+) => {
+
+    unsubscribeFromRoom();
+
+    roomSubscriptions.message = stompClient.subscribe(
+        `/topic/${roomCode}`,
+        (message) => {
+            const data = JSON.parse(message.body);
+            onMessage(data);
+        }
+    );
+
+    roomSubscriptions.typing = stompClient.subscribe(
+        `/topic/${roomCode}/typing`,
+        (message) => {
+            const data = JSON.parse(message.body);
+            onTyping(data);
+        }
+    );
+
+    roomSubscriptions.seen = stompClient.subscribe(
+        `/topic/${roomCode}/seen`,
+        (message) => {
+            const data = JSON.parse(message.body);
+            onSeen(data);
+        }
+    );
+};
+
 export const subscribeToRoom = (
     roomCode,
     onMessage,
@@ -104,36 +154,15 @@ export const subscribeToRoom = (
     onSeen
 ) => {
 
-    const doSubscribe = () => {
+    currentRoomHandlers = { roomCode, onMessage, onTyping, onSeen };
 
-        unsubscribeFromRoom();
-
-        roomSubscriptions.message = stompClient.subscribe(
-            `/topic/${roomCode}`,
-            (message) => {
-                const data = JSON.parse(message.body);
-                onMessage(data);
-            }
-        );
-
-        roomSubscriptions.typing = stompClient.subscribe(
-            `/topic/${roomCode}/typing`,
-            (message) => {
-                const data = JSON.parse(message.body);
-                onTyping(data);
-            }
-        );
-
-        roomSubscriptions.seen = stompClient.subscribe(
-            `/topic/${roomCode}/seen`,
-            (message) => {
-                const data = JSON.parse(message.body);
-                onSeen(data);
-            }
-        );
-    };
-
-    runWhenConnected(doSubscribe);
+    runWhenConnected(() => {
+        try {
+            doSubscribeToRoom(roomCode, onMessage, onTyping, onSeen);
+        } catch (error) {
+            console.error("ROOM SUBSCRIBE ERROR:", error);
+        }
+    });
 };
 
 export const unsubscribeFromRoom = () => {
@@ -195,6 +224,8 @@ export const sendCallSignal = (signal) => {
 export const disconnectWebSocket = () => {
 
     unsubscribeFromRoom();
+
+    currentRoomHandlers = null;
 
     if (callSubscription) {
         callSubscription.unsubscribe();
