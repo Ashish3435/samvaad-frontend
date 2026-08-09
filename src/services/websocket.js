@@ -41,11 +41,12 @@ export const connectWebSocket = (onCallSignal, onNotification) => {
         return;
     }
 
-    const socket = new SockJS(SOCKET_URL);
-
     stompClient = new Client({
 
-        webSocketFactory: () => socket,
+        webSocketFactory: () =>
+            new SockJS(SOCKET_URL, null, {
+                transports: ["websocket"]
+            }),
 
         reconnectDelay: 5000,
 
@@ -55,7 +56,6 @@ export const connectWebSocket = (onCallSignal, onNotification) => {
 
         onConnect: () => {
 
-            console.log("WebSocket Connected");
 
             isConnected = true;
 
@@ -79,11 +79,6 @@ export const connectWebSocket = (onCallSignal, onNotification) => {
                 }
             );
 
-            /* If we were subscribed to a room before a reconnect,
-               re-establish that subscription now — otherwise messages
-               in the currently open room would silently stop arriving
-               after any connection drop (e.g. a brief network blip,
-               or the server dropping an oversized frame). */
             if (currentRoomHandlers) {
                 doSubscribeToRoom(
                     currentRoomHandlers.roomCode,
@@ -185,8 +180,24 @@ export const unsubscribeFromRoom = () => {
 
 export const sendMessage = (message) => {
 
+
+
     if (!stompClient || !stompClient.connected) {
-        console.error("WebSocket is not connected");
+        console.warn("WebSocket not connected yet, retrying shortly...");
+
+        setTimeout(() => {
+
+
+            if (stompClient && stompClient.connected) {
+                stompClient.publish({
+                    destination: "/app/chat.send",
+                    body: JSON.stringify(message)
+                });
+            } else {
+                console.error("WebSocket still not connected, message not sent");
+            }
+        }, 1500);
+
         return;
     }
 
@@ -194,6 +205,7 @@ export const sendMessage = (message) => {
         destination: "/app/chat.send",
         body: JSON.stringify(message)
     });
+
 };
 
 export const sendTyping = (data) => {

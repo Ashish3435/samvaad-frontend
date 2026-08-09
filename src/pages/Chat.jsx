@@ -533,6 +533,9 @@ export default function Chat() {
     }, [messages]);
 
     const handleSend = (text, attachment) => {
+
+
+
         if ((!text || !text.trim()) && !attachment) {
             return;
         }
@@ -541,13 +544,15 @@ export default function Chat() {
             return;
         }
 
-        sendMessage({
+        const payload = {
             roomCode: selectedRoom,
             content: text?.trim() || null,
             attachmentData: attachment?.data || null,
             attachmentType: attachment?.type || null,
             attachmentName: attachment?.name || null
-        });
+        };
+
+        sendMessage(payload);
     };
 
     const handleRoomCreated = async (newRoom) => {

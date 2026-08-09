@@ -99,6 +99,7 @@ export default function ChatInput({
         setAttachError("");
         setProcessingFile(true);
 
+
         try {
             if (file.type.startsWith("image/")) {
                 const resizedBase64 = await resizeImage(file);
@@ -107,6 +108,7 @@ export default function ChatInput({
                     type: "image/jpeg",
                     name: file.name
                 });
+
             } else {
                 if (file.size > MAX_DOCUMENT_SIZE) {
                     setAttachError("File too large. Max 2MB.");
@@ -120,6 +122,7 @@ export default function ChatInput({
                     type: file.type || "application/octet-stream",
                     name: file.name
                 });
+
             }
         } catch (error) {
             console.error("ATTACHMENT ERROR:", error);
@@ -131,6 +134,8 @@ export default function ChatInput({
 
     const handleSubmit = (event) => {
         event.preventDefault();
+
+
 
         if (!text.trim() && !attachment) {
             return;
