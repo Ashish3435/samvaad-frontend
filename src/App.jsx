@@ -10,7 +10,7 @@ function App() {
             <Routes>
                 <Route
                     path="/"
-                    element={<Navigate to="/login" />}
+                    element={<Navigate to="/login" replace />}
                 />
 
                 <Route
@@ -25,6 +25,11 @@ function App() {
 
                 <Route
                     path="/chat"
+                    element={<Chat />}
+                />
+
+                <Route
+                    path="/chat/:chatId"
                     element={<Chat />}
                 />
             </Routes>
