@@ -9,10 +9,22 @@ registerSW({
     immediate: true,
 });
 
-createRoot(document.getElementById("root")).render(
+const root = createRoot(document.getElementById("root"));
+
+root.render(
     <StrictMode>
         <ThemeProvider>
             <App />
         </ThemeProvider>
     </StrictMode>
 );
+
+requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+        const loader = document.getElementById("app-loader");
+
+        if (loader) {
+            loader.remove();
+        }
+    });
+});

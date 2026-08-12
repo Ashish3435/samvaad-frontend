@@ -1,13 +1,180 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>samvaad-frontend</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0"
+  />
+
+  <meta name="theme-color" content="#f1f5f9" />
+
+  <title>Samvaad</title>
+
+  <script>
+    (function () {
+      const storedTheme = localStorage.getItem("theme");
+
+      const isDark =
+              storedTheme === "dark" ||
+              (
+                      storedTheme !== "light" &&
+                      window.matchMedia("(prefers-color-scheme: dark)").matches
+              );
+
+      if (isDark) {
+        document.documentElement.classList.add("dark");
+      }
+
+      document.documentElement.dataset.theme = isDark
+              ? "dark"
+              : "light";
+    })();
+  </script>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      min-height: 100%;
+    }
+
+    body {
+      background: #f1f5f9;
+    }
+
+    html.dark body {
+      background: #1c1917;
+    }
+
+    #root {
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    #app-loader {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f1f5f9;
+      z-index: 9999;
+    }
+
+    html.dark #app-loader {
+      background: #1c1917;
+    }
+
+    .loader-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .loader-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #14b8a6, #22d3ee);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 20px rgba(20, 184, 166, 0.25);
+    }
+
+    .loader-icon svg {
+      width: 30px;
+      height: 30px;
+    }
+
+    .loader-title {
+      margin-top: 14px;
+      font-family: Arial, sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      background: linear-gradient(to right, #14b8a6, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .loader-subtitle {
+      margin-top: 4px;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      color: #9ca3af;
+    }
+
+    html.dark .loader-subtitle {
+      color: #a8a29e;
+    }
+
+    .loader-dot {
+      margin-top: 18px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #993556;
+      animation: pulse 1s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%,
+      100% {
+        opacity: 0.3;
+        transform: scale(0.8);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div id="root">
+  <div id="app-loader">
+    <div class="loader-content">
+      <div class="loader-icon">
+        <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="white"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+        >
+          <path
+                  d="M21 11.5a8.38 8.38 0 0 1-.9 3.8
+                8.5 8.5 0 0 1-7.6 4.7
+                8.38 8.38 0 0 1-3.8-.9
+                L3 21l1.9-5.7
+                a8.38 8.38 0 0 1-.9-3.8
+                8.5 8.5 0 0 1 4.7-7.6
+                8.38 8.38 0 0 1 3.8-.9
+                h.5a8.48 8.48 0 0 1 8 8v.5z"
+          />
+        </svg>
+      </div>
+
+      <div class="loader-title">Samvaad</div>
+
+      <div class="loader-subtitle">
+        Where conversations feel like home
+      </div>
+
+      <div class="loader-dot"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/src/main.jsx"></script>
+</body>
 </html>
