@@ -1162,8 +1162,9 @@ export default function Chat() {
         );
 
     return (
-        <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden bg-slate-100 dark:bg-stone-950">
+        <div className="fixed inset-0 flex h-[100dvh] w-full overflow-hidden bg-slate-100 dark:bg-stone-950">
 
+            {/* SIDEBAR */}
             <Sidebar
                 rooms={rooms}
                 selectedRoom={selectedRoom}
@@ -1189,19 +1190,20 @@ export default function Chat() {
                 }
             />
 
+            {/* CHAT AREA */}
             <div
                 className={`${
                     selectedRoom
                         ? "flex"
                         : "hidden md:flex"
-                } flex-1 min-w-0 min-h-0 flex-col overflow-hidden`}
+                } flex-1 min-w-0 min-h-0 h-full flex-col overflow-hidden`}
             >
 
                 {selectedRoom ? (
                     <>
 
                         {/* CHAT HEADER */}
-                        <div className="bg-white dark:bg-stone-900 border-b dark:border-stone-700 px-5 py-3 flex items-center gap-3 shrink-0">
+                        <div className="shrink-0 bg-white dark:bg-stone-900 border-b dark:border-stone-700 px-5 py-3 flex items-center gap-3">
 
                             <button
                                 onClick={() =>
@@ -1334,28 +1336,32 @@ export default function Chat() {
 
                         </div>
 
-                        {/* CHAT MESSAGES */}
-                        <ChatWindow
-                            messages={
-                                messages
-                            }
-                            bottomRef={
-                                bottomRef
-                            }
-                        />
+                        {/* MESSAGE AREA */}
+                        <div className="flex-1 min-h-0 overflow-hidden">
+                            <ChatWindow
+                                messages={
+                                    messages
+                                }
+                                bottomRef={
+                                    bottomRef
+                                }
+                            />
+                        </div>
 
                         {/* CHAT INPUT */}
-                        <ChatInput
-                            onSend={
-                                handleSend
-                            }
-                            roomCode={
-                                selectedRoom
-                            }
-                            canSend={
-                                canSend
-                            }
-                        />
+                        <div className="shrink-0">
+                            <ChatInput
+                                onSend={
+                                    handleSend
+                                }
+                                roomCode={
+                                    selectedRoom
+                                }
+                                canSend={
+                                    canSend
+                                }
+                            />
+                        </div>
 
                     </>
                 ) : (
@@ -1367,6 +1373,7 @@ export default function Chat() {
 
             </div>
 
+            {/* NEW CHAT MODAL */}
             {showNewChat && (
                 <NewChatModal
                     onClose={() =>
@@ -1380,6 +1387,7 @@ export default function Chat() {
                 />
             )}
 
+            {/* GROUP INFO MODAL */}
             {showGroupInfo &&
                 selectedRoomData && (
                     <GroupInfoModal
@@ -1400,6 +1408,7 @@ export default function Chat() {
                     />
                 )}
 
+            {/* CALL MODAL */}
             <CallModal
                 callState={
                     callState
