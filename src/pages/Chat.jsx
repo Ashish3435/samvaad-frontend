@@ -142,7 +142,9 @@ export default function Chat() {
                 selectedRoom
             );
         } else {
-            sessionStorage.removeItem(SELECTED_ROOM_KEY);
+            sessionStorage.removeItem(
+                SELECTED_ROOM_KEY
+            );
         }
     }, [selectedRoom]);
 
@@ -243,7 +245,10 @@ export default function Chat() {
             const data = await getOnlineUsers();
             setOnlineUsers(data);
         } catch (error) {
-            console.error("ONLINE USERS ERROR:", error);
+            console.error(
+                "ONLINE USERS ERROR:",
+                error
+            );
         }
     }, []);
 
@@ -822,6 +827,7 @@ export default function Chat() {
                 await getRooms();
 
             setRooms(updatedRooms);
+
             selectRoom(
                 privateRoom.roomCode
             );
@@ -1089,9 +1095,7 @@ export default function Chat() {
                         <div className="bg-white dark:bg-stone-900 border-b dark:border-stone-700 px-5 py-3 flex items-center gap-3 shrink-0">
                             <button
                                 onClick={() =>
-                                    setSelectedRoom(
-                                        ""
-                                    )
+                                    setSelectedRoom("")
                                 }
                                 className="md:hidden text-blue-600 dark:text-teal-400 font-bold text-xl px-1"
                             >

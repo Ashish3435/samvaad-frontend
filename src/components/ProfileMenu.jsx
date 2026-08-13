@@ -7,7 +7,6 @@ export default function ProfileMenu({
                                         onAboutStatus,
                                         onLogout
                                     }) {
-
     const menuRef = useRef(null);
 
     useEffect(() => {
@@ -30,7 +29,7 @@ export default function ProfileMenu({
     return (
         <div
             ref={menuRef}
-            className="absolute top-full right-0 mt-2 w-48 bg-white dark:bg-stone-800 border dark:border-stone-700 rounded-lg shadow-lg z-50 py-1"
+            className="fixed left-20 bottom-4 w-48 bg-white dark:bg-stone-800 border border-gray-200 dark:border-stone-700 rounded-lg shadow-2xl z-[9999] py-1"
         >
             <button
                 onClick={onSettings}
