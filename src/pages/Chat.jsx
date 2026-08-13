@@ -95,25 +95,45 @@ export default function Chat() {
     const [rooms, setRooms] = useState([]);
 
     const [selectedRoom, setSelectedRoom] = useState(
-        () => sessionStorage.getItem(SELECTED_ROOM_KEY) || ""
+        () =>
+            sessionStorage.getItem(
+                SELECTED_ROOM_KEY
+            ) || ""
     );
 
-    const [showNewChat, setShowNewChat] = useState(false);
-    const [typingUser, setTypingUser] = useState("");
-    const [showGroupInfo, setShowGroupInfo] = useState(false);
+    const [showNewChat, setShowNewChat] =
+        useState(false);
 
-    const [callState, setCallState] = useState(null);
-    const [localStream, setLocalStream] = useState(null);
-    const [micOn, setMicOn] = useState(true);
-    const [cameraOn, setCameraOn] = useState(true);
+    const [typingUser, setTypingUser] =
+        useState("");
 
-    const currentUserEmail = getCurrentUser()?.trim().toLowerCase();
+    const [showGroupInfo, setShowGroupInfo] =
+        useState(false);
 
-    const selectedRoomRef = useRef(selectedRoom);
-    const roomsRef = useRef(rooms);
+    const [callState, setCallState] =
+        useState(null);
+
+    const [localStream, setLocalStream] =
+        useState(null);
+
+    const [micOn, setMicOn] =
+        useState(true);
+
+    const [cameraOn, setCameraOn] =
+        useState(true);
+
+    const currentUserEmail =
+        getCurrentUser()?.trim().toLowerCase();
+
+    const selectedRoomRef =
+        useRef(selectedRoom);
+
+    const roomsRef =
+        useRef(rooms);
 
     useEffect(() => {
-        selectedRoomRef.current = selectedRoom;
+        selectedRoomRef.current =
+            selectedRoom;
     }, [selectedRoom]);
 
     useEffect(() => {
@@ -168,35 +188,6 @@ export default function Chat() {
         };
     }, []);
 
-    const [viewportHeight, setViewportHeight] = useState(
-        window.visualViewport?.height ||
-        window.innerHeight
-    );
-
-    useEffect(() => {
-        const viewport = window.visualViewport;
-
-        if (!viewport) {
-            return;
-        }
-
-        const handleViewportResize = () => {
-            setViewportHeight(viewport.height);
-        };
-
-        viewport.addEventListener(
-            "resize",
-            handleViewportResize
-        );
-
-        return () => {
-            viewport.removeEventListener(
-                "resize",
-                handleViewportResize
-            );
-        };
-    }, []);
-
     useEffect(() => {
         if (
             "Notification" in window &&
@@ -212,358 +203,431 @@ export default function Chat() {
 
             setRooms(data);
 
-            setSelectedRoom((currentSelectedRoom) => {
-                if (
-                    currentSelectedRoom &&
-                    data.some(
-                        (room) =>
-                            room.roomCode ===
-                            currentSelectedRoom
-                    )
-                ) {
-                    return currentSelectedRoom;
+            setSelectedRoom(
+                (currentSelectedRoom) => {
+                    if (
+                        currentSelectedRoom &&
+                        data.some(
+                            (room) =>
+                                room.roomCode ===
+                                currentSelectedRoom
+                        )
+                    ) {
+                        return currentSelectedRoom;
+                    }
+
+                    return "";
                 }
-
-                return "";
-            });
-        } catch (error) {
-            console.error("ROOM ERROR:", error);
-        }
-    }, []);
-
-    const loadMessages = useCallback(async (roomCode) => {
-        try {
-            const data = await getMessages(roomCode);
-            setMessages(data);
-        } catch (error) {
-            console.error("MESSAGE ERROR:", error);
-        }
-    }, []);
-
-    const loadOnlineUsers = useCallback(async () => {
-        try {
-            const data = await getOnlineUsers();
-            setOnlineUsers(data);
+            );
         } catch (error) {
             console.error(
-                "ONLINE USERS ERROR:",
+                "ROOM ERROR:",
                 error
             );
         }
     }, []);
 
-    const findMemberName = useCallback(
-        (email) => {
-            for (const room of rooms) {
-                const member = room.members?.find(
-                    (m) =>
-                        m.email
-                            ?.trim()
-                            .toLowerCase() === email
+    const loadMessages = useCallback(
+        async (roomCode) => {
+            try {
+                const data =
+                    await getMessages(roomCode);
+
+                setMessages(data);
+            } catch (error) {
+                console.error(
+                    "MESSAGE ERROR:",
+                    error
+                );
+            }
+        },
+        []
+    );
+
+    const loadOnlineUsers =
+        useCallback(async () => {
+            try {
+                const data =
+                    await getOnlineUsers();
+
+                setOnlineUsers(data);
+            } catch (error) {
+                console.error(
+                    "ONLINE USERS ERROR:",
+                    error
+                );
+            }
+        }, []);
+
+    const findMemberName =
+        useCallback(
+            (email) => {
+                for (const room of rooms) {
+                    const member =
+                        room.members?.find(
+                            (m) =>
+                                m.email
+                                    ?.trim()
+                                    .toLowerCase() ===
+                                email
+                        );
+
+                    if (member) {
+                        return member.fullName;
+                    }
+                }
+
+                return email;
+            },
+            [rooms]
+        );
+
+    const handleNotification =
+        useCallback(
+            (message) => {
+                const room =
+                    roomsRef.current.find(
+                        (r) =>
+                            r.roomCode ===
+                            message.roomCode
+                    );
+
+                const isRoomOpen =
+                    selectedRoomRef.current ===
+                    message.roomCode;
+
+                const isTabHidden =
+                    document.visibilityState ===
+                    "hidden";
+
+                const shouldBumpUnread =
+                    !isRoomOpen;
+
+                setRooms(
+                    (previousRooms) => {
+                        const updated =
+                            previousRooms.map(
+                                (r) => {
+                                    if (
+                                        r.roomCode !==
+                                        message.roomCode
+                                    ) {
+                                        return r;
+                                    }
+
+                                    return {
+                                        ...r,
+                                        lastMessageAt:
+                                        message.sentAt,
+                                        unreadCount:
+                                            shouldBumpUnread
+                                                ? (r.unreadCount ||
+                                                0) + 1
+                                                : r.unreadCount
+                                    };
+                                }
+                            );
+
+                        return [...updated].sort(
+                            (a, b) => {
+                                if (
+                                    !a.lastMessageAt &&
+                                    !b.lastMessageAt
+                                ) {
+                                    return 0;
+                                }
+
+                                if (
+                                    !a.lastMessageAt
+                                ) {
+                                    return 1;
+                                }
+
+                                if (
+                                    !b.lastMessageAt
+                                ) {
+                                    return -1;
+                                }
+
+                                return (
+                                    new Date(
+                                        b.lastMessageAt
+                                    ) -
+                                    new Date(
+                                        a.lastMessageAt
+                                    )
+                                );
+                            }
+                        );
+                    }
                 );
 
-                if (member) {
-                    return member.fullName;
+                if (
+                    isRoomOpen &&
+                    !isTabHidden
+                ) {
+                    return;
                 }
-            }
 
-            return email;
-        },
-        [rooms]
-    );
+                const isGroupOrChannel =
+                    room?.roomType ===
+                    "GROUP" ||
+                    room?.roomType ===
+                    "CHANNEL";
 
-    const handleNotification = useCallback(
-        (message) => {
-            const room = roomsRef.current.find(
-                (r) =>
-                    r.roomCode === message.roomCode
-            );
+                const bodyText =
+                    message.content
+                        ? message.content
+                        : message.attachmentType?.startsWith(
+                            "image/"
+                        )
+                            ? "📷 Photo"
+                            : "📄 File";
 
-            const isRoomOpen =
-                selectedRoomRef.current ===
-                message.roomCode;
+                const title =
+                    message.mentioned
+                        ? `${message.senderName} mentioned you`
+                        : isGroupOrChannel
+                            ? `${message.senderName} in ${
+                                room?.roomName ||
+                                "group"
+                            }`
+                            : message.senderName ||
+                            "New message";
 
-            const isTabHidden =
-                document.visibilityState === "hidden";
-
-            const shouldBumpUnread = !isRoomOpen;
-
-            setRooms((previousRooms) => {
-                const updated = previousRooms.map((r) => {
-                    if (
-                        r.roomCode !==
-                        message.roomCode
-                    ) {
-                        return r;
-                    }
-
-                    return {
-                        ...r,
-                        lastMessageAt: message.sentAt,
-                        unreadCount: shouldBumpUnread
-                            ? (r.unreadCount || 0) + 1
-                            : r.unreadCount
-                    };
-                });
-
-                return [...updated].sort((a, b) => {
-                    if (
-                        !a.lastMessageAt &&
-                        !b.lastMessageAt
-                    ) {
-                        return 0;
-                    }
-
-                    if (!a.lastMessageAt) {
-                        return 1;
-                    }
-
-                    if (!b.lastMessageAt) {
-                        return -1;
-                    }
-
-                    return (
-                        new Date(b.lastMessageAt) -
-                        new Date(a.lastMessageAt)
-                    );
-                });
-            });
-
-            if (isRoomOpen && !isTabHidden) {
-                return;
-            }
-
-            const isGroupOrChannel =
-                room?.roomType === "GROUP" ||
-                room?.roomType === "CHANNEL";
-
-            const bodyText = message.content
-                ? message.content
-                : message.attachmentType?.startsWith(
-                    "image/"
-                )
-                    ? "📷 Photo"
-                    : "📄 File";
-
-            const title = message.mentioned
-                ? `${message.senderName} mentioned you`
-                : isGroupOrChannel
-                    ? `${message.senderName} in ${
-                        room?.roomName || "group"
-                    }`
-                    : message.senderName ||
-                    "New message";
-
-            const notification =
-                notifyIfAllowed(title, {
-                    body: bodyText,
-                    icon: "/favicon.ico",
-                    tag: message.mentioned
-                        ? `mention-${message.roomCode}-${message.id}`
-                        : message.roomCode,
-                    requireInteraction:
-                        Boolean(message.mentioned)
-                });
-
-            if (notification) {
-                notification.onclick = () => {
-                    window.focus();
-                    selectRoom(message.roomCode);
-                    notification.close();
-                };
-            }
-        },
-        [selectRoom]
-    );
-
-    const handleCallSignal = useCallback(
-        async (data) => {
-            switch (data.type) {
-                case "call-invite": {
-                    setCallState((prev) => {
-                        if (prev) {
-                            return prev;
+                const notification =
+                    notifyIfAllowed(
+                        title,
+                        {
+                            body: bodyText,
+                            icon: "/favicon.ico",
+                            tag: message.mentioned
+                                ? `mention-${message.roomCode}-${message.id}`
+                                : message.roomCode,
+                            requireInteraction:
+                                Boolean(
+                                    message.mentioned
+                                )
                         }
+                    );
 
-                        const callerName =
-                            findMemberName(
-                                data.targetEmail
+                if (notification) {
+                    notification.onclick =
+                        () => {
+                            window.focus();
+
+                            selectRoom(
+                                message.roomCode
                             );
 
-                        if (
-                            document.visibilityState ===
-                            "hidden"
-                        ) {
-                            const notification =
-                                notifyIfAllowed(
-                                    `Incoming ${
-                                        data.callType ===
-                                        "video"
-                                            ? "video"
-                                            : "voice"
-                                    } call`,
-                                    {
-                                        body: `${callerName} is calling you`,
-                                        icon: "/favicon.ico",
-                                        tag: `call-${data.roomCode}`,
-                                        requireInteraction:
-                                            true
-                                    }
+                            notification.close();
+                        };
+                }
+            },
+            [selectRoom]
+        );
+
+    const handleCallSignal =
+        useCallback(
+            async (data) => {
+                switch (data.type) {
+                    case "call-invite": {
+                        setCallState((prev) => {
+                            if (prev) {
+                                return prev;
+                            }
+
+                            const callerName =
+                                findMemberName(
+                                    data.targetEmail
                                 );
 
-                            if (notification) {
-                                notification.onclick =
-                                    () => {
-                                        window.focus();
-                                        notification.close();
-                                    };
-                            }
-                        }
+                            if (
+                                document.visibilityState ===
+                                "hidden"
+                            ) {
+                                const notification =
+                                    notifyIfAllowed(
+                                        `Incoming ${
+                                            data.callType ===
+                                            "video"
+                                                ? "video"
+                                                : "voice"
+                                        } call`,
+                                        {
+                                            body: `${callerName} is calling you`,
+                                            icon: "/favicon.ico",
+                                            tag: `call-${data.roomCode}`,
+                                            requireInteraction:
+                                                true
+                                        }
+                                    );
 
-                        return {
-                            status: "ringing-incoming",
-                            roomCode:
-                            data.roomCode,
-                            callType:
-                            data.callType,
-                            callerEmail:
-                            data.targetEmail,
-                            callerName,
-                            participants: {}
-                        };
-                    });
-
-                    break;
-                }
-
-                case "call-accept": {
-                    const acceptorEmail =
-                        data.targetEmail;
-
-                    setCallState((prev) => {
-                        if (
-                            !prev ||
-                            prev.status !==
-                            "ringing-outgoing"
-                        ) {
-                            return prev;
-                        }
-
-                        const existingPeers =
-                            Object.keys(
-                                prev.participants
-                            );
-
-                        sendCallSignal({
-                            type: "call-peers-list",
-                            roomCode:
-                            prev.roomCode,
-                            targetEmail:
-                            acceptorEmail,
-                            payload: {
-                                peers: [
-                                    currentUserEmail,
-                                    ...existingPeers
-                                ]
-                            }
-                        });
-
-                        return {
-                            ...prev,
-                            status: "in-call",
-                            participants: {
-                                ...prev.participants,
-                                [acceptorEmail]: {
-                                    name: findMemberName(
-                                        acceptorEmail
-                                    ),
-                                    stream: null
+                                if (
+                                    notification
+                                ) {
+                                    notification.onclick =
+                                        () => {
+                                            window.focus();
+                                            notification.close();
+                                        };
                                 }
                             }
-                        };
-                    });
 
-                    break;
-                }
+                            return {
+                                status:
+                                    "ringing-incoming",
+                                roomCode:
+                                data.roomCode,
+                                callType:
+                                data.callType,
+                                callerEmail:
+                                data.targetEmail,
+                                callerName,
+                                participants: {}
+                            };
+                        });
 
-                case "call-reject": {
-                    setCallState(null);
-                    endCall();
-                    break;
-                }
-
-                case "call-end": {
-                    endCall();
-                    setCallState(null);
-                    break;
-                }
-
-                case "call-peers-list": {
-                    const peers =
-                        data.payload?.peers || [];
-
-                    for (const peerEmail of peers) {
-                        await createOfferTo(peerEmail);
+                        break;
                     }
 
-                    break;
-                }
+                    case "call-accept": {
+                        const acceptorEmail =
+                            data.targetEmail;
 
-                case "webrtc-offer": {
-                    await handleOffer(
-                        data.targetEmail,
-                        data.payload
-                    );
+                        setCallState((prev) => {
+                            if (
+                                !prev ||
+                                prev.status !==
+                                "ringing-outgoing"
+                            ) {
+                                return prev;
+                            }
 
-                    setCallState((prev) => {
-                        if (!prev) {
-                            return prev;
-                        }
+                            const existingPeers =
+                                Object.keys(
+                                    prev.participants
+                                );
 
-                        return {
-                            ...prev,
-                            participants: {
-                                ...prev.participants,
-                                [data.targetEmail]:
-                                    prev.participants[
-                                        data.targetEmail
-                                        ] || {
+                            sendCallSignal({
+                                type:
+                                    "call-peers-list",
+                                roomCode:
+                                prev.roomCode,
+                                targetEmail:
+                                acceptorEmail,
+                                payload: {
+                                    peers: [
+                                        currentUserEmail,
+                                        ...existingPeers
+                                    ]
+                                }
+                            });
+
+                            return {
+                                ...prev,
+                                status: "in-call",
+                                participants: {
+                                    ...prev.participants,
+                                    [acceptorEmail]: {
                                         name: findMemberName(
-                                            data.targetEmail
+                                            acceptorEmail
                                         ),
                                         stream: null
                                     }
+                                }
+                            };
+                        });
+
+                        break;
+                    }
+
+                    case "call-reject": {
+                        setCallState(null);
+                        endCall();
+                        break;
+                    }
+
+                    case "call-end": {
+                        endCall();
+                        setCallState(null);
+                        break;
+                    }
+
+                    case "call-peers-list": {
+                        const peers =
+                            data.payload?.peers ||
+                            [];
+
+                        for (
+                            const peerEmail of peers
+                            ) {
+                            await createOfferTo(
+                                peerEmail
+                            );
+                        }
+
+                        break;
+                    }
+
+                    case "webrtc-offer": {
+                        await handleOffer(
+                            data.targetEmail,
+                            data.payload
+                        );
+
+                        setCallState((prev) => {
+                            if (!prev) {
+                                return prev;
                             }
-                        };
-                    });
 
-                    break;
+                            return {
+                                ...prev,
+                                participants: {
+                                    ...prev.participants,
+                                    [data.targetEmail]:
+                                        prev.participants[
+                                            data.targetEmail
+                                            ] || {
+                                            name: findMemberName(
+                                                data.targetEmail
+                                            ),
+                                            stream: null
+                                        }
+                                }
+                            };
+                        });
+
+                        break;
+                    }
+
+                    case "webrtc-answer": {
+                        await handleAnswer(
+                            data.targetEmail,
+                            data.payload
+                        );
+
+                        break;
+                    }
+
+                    case "webrtc-ice-candidate": {
+                        await handleIceCandidate(
+                            data.targetEmail,
+                            data.payload
+                        );
+
+                        break;
+                    }
+
+                    default:
+                        break;
                 }
-
-                case "webrtc-answer": {
-                    await handleAnswer(
-                        data.targetEmail,
-                        data.payload
-                    );
-
-                    break;
-                }
-
-                case "webrtc-ice-candidate": {
-                    await handleIceCandidate(
-                        data.targetEmail,
-                        data.payload
-                    );
-
-                    break;
-                }
-
-                default:
-                    break;
-            }
-        },
-        [currentUserEmail, findMemberName]
-    );
+            },
+            [
+                currentUserEmail,
+                findMemberName
+            ]
+        );
 
     const handleCallSignalRef =
         useRef(handleCallSignal);
@@ -583,7 +647,8 @@ export default function Chat() {
 
     useEffect(() => {
         initWebRTC({
-            sendSignalFn: sendCallSignal,
+            sendSignalFn:
+            sendCallSignal,
 
             onRemoteStreamFn: (
                 peerEmail,
@@ -599,7 +664,8 @@ export default function Chat() {
                         participants: {
                             ...prev.participants,
                             [peerEmail]: {
-                                ...(prev.participants[
+                                ...(prev
+                                    .participants[
                                     peerEmail
                                     ] || {
                                     name: peerEmail
@@ -611,7 +677,9 @@ export default function Chat() {
                 });
             },
 
-            onPeerLeftFn: (peerEmail) => {
+            onPeerLeftFn: (
+                peerEmail
+            ) => {
                 setCallState((prev) => {
                     if (!prev) {
                         return prev;
@@ -621,11 +689,14 @@ export default function Chat() {
                         ...prev.participants
                     };
 
-                    delete updated[peerEmail];
+                    delete updated[
+                        peerEmail
+                        ];
 
                     return {
                         ...prev,
-                        participants: updated
+                        participants:
+                        updated
                     };
                 });
             }
@@ -635,23 +706,31 @@ export default function Chat() {
     useEffect(() => {
         connectWebSocket(
             (data) =>
-                handleCallSignalRef.current(data),
+                handleCallSignalRef.current(
+                    data
+                ),
             (data) =>
-                handleNotificationRef.current(data)
+                handleNotificationRef.current(
+                    data
+                )
         );
 
         loadRooms();
         loadOnlineUsers();
 
-        const interval = setInterval(
-            loadOnlineUsers,
-            5000
-        );
+        const interval =
+            setInterval(
+                loadOnlineUsers,
+                5000
+            );
 
         return () => {
             clearInterval(interval);
         };
-    }, [loadRooms, loadOnlineUsers]);
+    }, [
+        loadRooms,
+        loadOnlineUsers
+    ]);
 
     useEffect(() => {
         if (!selectedRoom) {
@@ -663,24 +742,27 @@ export default function Chat() {
 
         loadMessages(selectedRoom);
 
-        markMessagesAsSeen(selectedRoom).catch(
-            (error) => {
-                console.error(
-                    "MARK SEEN ERROR:",
-                    error
-                );
-            }
-        );
+        markMessagesAsSeen(
+            selectedRoom
+        ).catch((error) => {
+            console.error(
+                "MARK SEEN ERROR:",
+                error
+            );
+        });
 
-        setRooms((previousRooms) =>
-            previousRooms.map((room) =>
-                room.roomCode === selectedRoom
-                    ? {
-                        ...room,
-                        unreadCount: 0
-                    }
-                    : room
-            )
+        setRooms(
+            (previousRooms) =>
+                previousRooms.map(
+                    (room) =>
+                        room.roomCode ===
+                        selectedRoom
+                            ? {
+                                ...room,
+                                unreadCount: 0
+                            }
+                            : room
+                )
         );
 
         subscribeToRoom(
@@ -785,7 +867,8 @@ export default function Chat() {
 
         sendMessage({
             roomCode: selectedRoom,
-            content: text?.trim() || null,
+            content:
+                text?.trim() || null,
             attachmentData:
                 attachment?.data || null,
             attachmentType:
@@ -795,64 +878,67 @@ export default function Chat() {
         });
     };
 
-    const handleRoomCreated = async (
-        newRoom
-    ) => {
-        try {
-            const updatedRooms =
-                await getRooms();
+    const handleRoomCreated =
+        async (newRoom) => {
+            try {
+                const updatedRooms =
+                    await getRooms();
 
-            setRooms(updatedRooms);
-            selectRoom(newRoom.roomCode);
-        } catch (error) {
-            console.error(
-                "ROOM REFRESH ERROR:",
-                error
-            );
-        }
-    };
+                setRooms(updatedRooms);
 
-    const handleUserSelected = async (
-        user
-    ) => {
-        try {
-            setShowNewChat(false);
-
-            const privateRoom =
-                await createPrivateRoom(
-                    user.email
+                selectRoom(
+                    newRoom.roomCode
                 );
+            } catch (error) {
+                console.error(
+                    "ROOM REFRESH ERROR:",
+                    error
+                );
+            }
+        };
 
-            const updatedRooms =
-                await getRooms();
+    const handleUserSelected =
+        async (user) => {
+            try {
+                setShowNewChat(false);
 
-            setRooms(updatedRooms);
+                const privateRoom =
+                    await createPrivateRoom(
+                        user.email
+                    );
 
-            selectRoom(
-                privateRoom.roomCode
-            );
-        } catch (error) {
-            console.error(
-                "PRIVATE CHAT ERROR:",
-                error
-            );
-        }
-    };
+                const updatedRooms =
+                    await getRooms();
+
+                setRooms(updatedRooms);
+
+                selectRoom(
+                    privateRoom.roomCode
+                );
+            } catch (error) {
+                console.error(
+                    "PRIVATE CHAT ERROR:",
+                    error
+                );
+            }
+        };
 
     const handleRoomUpdated = (
         updatedRoom
     ) => {
-        setRooms((previousRooms) =>
-            previousRooms.map((room) =>
-                room.roomCode ===
-                updatedRoom.roomCode
-                    ? {
-                        ...updatedRoom,
-                        unreadCount:
-                        room.unreadCount
-                    }
-                    : room
-            )
+        setRooms(
+            (previousRooms) =>
+                previousRooms.map(
+                    (room) =>
+                        room.roomCode ===
+                        updatedRoom.roomCode
+                            ? {
+                                ...updatedRoom,
+                                unreadCount:
+                                room.unreadCount
+                            }
+                            : room
+                )
         );
     };
 
@@ -865,6 +951,7 @@ export default function Chat() {
         );
 
         logout();
+
         navigate("/login");
     };
 
@@ -886,6 +973,7 @@ export default function Chat() {
 
             setLocalStream(stream);
             setMicOn(true);
+
             setCameraOn(
                 callType === "video"
             );
@@ -897,8 +985,10 @@ export default function Chat() {
             });
 
             setCallState({
-                status: "ringing-outgoing",
-                roomCode: selectedRoom,
+                status:
+                    "ringing-outgoing",
+                roomCode:
+                selectedRoom,
                 callType,
                 participants: {}
             });
@@ -927,6 +1017,7 @@ export default function Chat() {
 
             setLocalStream(stream);
             setMicOn(true);
+
             setCameraOn(
                 callState.callType ===
                 "video"
@@ -984,6 +1075,7 @@ export default function Chat() {
         });
 
         endCall();
+
         setCallState(null);
         setLocalStream(null);
     };
@@ -1020,13 +1112,15 @@ export default function Chat() {
             selectedRoom;
 
     const isOpponentOnline =
-        selectedRoomData?.otherUserEmail
+        selectedRoomData
+            ?.otherUserEmail
             ? onlineUsers.some(
                 (user) =>
                     user.email
                         ?.trim()
                         .toLowerCase() ===
-                    selectedRoomData.otherUserEmail
+                    selectedRoomData
+                        .otherUserEmail
                         ?.trim()
                         .toLowerCase()
             )
@@ -1034,49 +1128,61 @@ export default function Chat() {
 
     const typingDisplayName =
         typingUser &&
-        selectedRoomData?.otherUserEmail
+        selectedRoomData
+            ?.otherUserEmail
             ?.trim()
-            .toLowerCase() === typingUser
-            ? selectedRoomData.otherUserName
+            .toLowerCase() ===
+        typingUser
+            ? selectedRoomData
+                .otherUserName
             : typingUser;
 
     const canSend =
-        selectedRoomType === "CHANNEL"
+        selectedRoomType ===
+        "CHANNEL"
             ? Boolean(
                 selectedRoomData?.admin
             )
             : true;
 
     const isGroupOrChannel =
-        selectedRoomType === "GROUP" ||
-        selectedRoomType === "CHANNEL";
+        selectedRoomType ===
+        "GROUP" ||
+        selectedRoomType ===
+        "CHANNEL";
 
     const canCall =
         !callState &&
         selectedRoom &&
         (
-            selectedRoomType === "CHAT" ||
-            selectedRoomType === "GROUP"
+            selectedRoomType ===
+            "CHAT" ||
+            selectedRoomType ===
+            "GROUP"
         );
 
     return (
-        <div
-            className="flex bg-slate-100 dark:bg-stone-950 overflow-hidden"
-            style={{
-                height: `${viewportHeight}px`
-            }}
-        >
+        <div className="flex h-[100dvh] min-h-0 w-full overflow-hidden bg-slate-100 dark:bg-stone-950">
+
             <Sidebar
                 rooms={rooms}
                 selectedRoom={selectedRoom}
-                onSelectRoom={selectRoom}
-                onlineUsers={onlineUsers}
-                onLogout={handleLogout}
+                onSelectRoom={
+                    selectRoom
+                }
+                onlineUsers={
+                    onlineUsers
+                }
+                onLogout={
+                    handleLogout
+                }
                 onRoomCreated={
                     handleRoomCreated
                 }
                 onNewChat={() =>
-                    setShowNewChat(true)
+                    setShowNewChat(
+                        true
+                    )
                 }
                 currentUserEmail={
                     currentUserEmail
@@ -1088,14 +1194,20 @@ export default function Chat() {
                     selectedRoom
                         ? "flex"
                         : "hidden md:flex"
-                } flex-1 flex-col min-w-0`}
+                } flex-1 min-w-0 min-h-0 flex-col overflow-hidden`}
             >
+
                 {selectedRoom ? (
                     <>
+
+                        {/* CHAT HEADER */}
                         <div className="bg-white dark:bg-stone-900 border-b dark:border-stone-700 px-5 py-3 flex items-center gap-3 shrink-0">
+
                             <button
                                 onClick={() =>
-                                    setSelectedRoom("")
+                                    setSelectedRoom(
+                                        ""
+                                    )
                                 }
                                 className="md:hidden text-blue-600 dark:text-teal-400 font-bold text-xl px-1"
                             >
@@ -1118,6 +1230,7 @@ export default function Chat() {
                                         : "cursor-default"
                                 }`}
                             >
+
                                 {selectedRoomType ===
                                 "CHAT" &&
                                 selectedRoomData?.otherUserPhoto ? (
@@ -1139,6 +1252,7 @@ export default function Chat() {
                                 )}
 
                                 <div className="min-w-0">
+
                                     <h2 className="text-xl font-bold truncate text-gray-900 dark:text-stone-100">
                                         {
                                             displayRoomName
@@ -1146,7 +1260,7 @@ export default function Chat() {
                                     </h2>
 
                                     {typingUser ? (
-                                        <p className="text-sm text-green-600 dark:text-green-400">
+                                        <p className="text-sm text-green-600 dark:text-green-400 truncate">
                                             {
                                                 typingDisplayName
                                             }{" "}
@@ -1176,17 +1290,21 @@ export default function Chat() {
                                                 <span className="mr-1">
                                                     ●
                                                 </span>
+
                                                 {isOpponentOnline
                                                     ? "Online"
                                                     : "Offline"}
                                             </p>
                                         )
                                     )}
+
                                 </div>
+
                             </button>
 
                             {canCall && (
                                 <div className="flex items-center gap-1 shrink-0">
+
                                     <button
                                         onClick={() =>
                                             startCall(
@@ -1210,33 +1328,51 @@ export default function Chat() {
                                     >
                                         🎥
                                     </button>
+
                                 </div>
                             )}
+
                         </div>
 
+                        {/* CHAT MESSAGES */}
                         <ChatWindow
-                            messages={messages}
-                            bottomRef={bottomRef}
+                            messages={
+                                messages
+                            }
+                            bottomRef={
+                                bottomRef
+                            }
                         />
 
+                        {/* CHAT INPUT */}
                         <ChatInput
-                            onSend={handleSend}
-                            roomCode={selectedRoom}
-                            canSend={canSend}
+                            onSend={
+                                handleSend
+                            }
+                            roomCode={
+                                selectedRoom
+                            }
+                            canSend={
+                                canSend
+                            }
                         />
+
                     </>
                 ) : (
-                    <div className="hidden md:flex flex-1 items-center justify-center text-gray-400 dark:text-stone-500">
+                    <div className="hidden md:flex flex-1 min-h-0 items-center justify-center text-gray-400 dark:text-stone-500">
                         Select a chat to start
                         messaging
                     </div>
                 )}
+
             </div>
 
             {showNewChat && (
                 <NewChatModal
                     onClose={() =>
-                        setShowNewChat(false)
+                        setShowNewChat(
+                            false
+                        )
                     }
                     onUserSelected={
                         handleUserSelected
@@ -1247,12 +1383,16 @@ export default function Chat() {
             {showGroupInfo &&
                 selectedRoomData && (
                     <GroupInfoModal
-                        room={selectedRoomData}
+                        room={
+                            selectedRoomData
+                        }
                         currentUserEmail={
                             currentUserEmail
                         }
                         onClose={() =>
-                            setShowGroupInfo(false)
+                            setShowGroupInfo(
+                                false
+                            )
                         }
                         onUpdated={
                             handleRoomUpdated
@@ -1261,15 +1401,23 @@ export default function Chat() {
                 )}
 
             <CallModal
-                callState={callState}
+                callState={
+                    callState
+                }
                 localStream={
                     localStream ||
                     getLocalStreamRef()
                 }
                 micOn={micOn}
-                cameraOn={cameraOn}
-                onAccept={acceptCall}
-                onReject={rejectCall}
+                cameraOn={
+                    cameraOn
+                }
+                onAccept={
+                    acceptCall
+                }
+                onReject={
+                    rejectCall
+                }
                 onEnd={hangUp}
                 onToggleMic={
                     handleToggleMic
@@ -1278,6 +1426,7 @@ export default function Chat() {
                     handleToggleCamera
                 }
             />
+
         </div>
     );
 }

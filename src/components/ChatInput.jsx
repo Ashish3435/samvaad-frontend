@@ -45,8 +45,10 @@ const resizeImage = (file) => {
 const readFileAsBase64 = (file) => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
+
         reader.onload = () => resolve(reader.result);
         reader.onerror = () => reject(new Error("Failed to read file"));
+
         reader.readAsDataURL(file);
     });
 };
@@ -99,30 +101,28 @@ export default function ChatInput({
         setAttachError("");
         setProcessingFile(true);
 
-
         try {
             if (file.type.startsWith("image/")) {
                 const resizedBase64 = await resizeImage(file);
+
                 setAttachment({
                     data: resizedBase64,
                     type: "image/jpeg",
                     name: file.name
                 });
-
             } else {
                 if (file.size > MAX_DOCUMENT_SIZE) {
                     setAttachError("File too large. Max 2MB.");
-                    setProcessingFile(false);
                     return;
                 }
 
                 const base64 = await readFileAsBase64(file);
+
                 setAttachment({
                     data: base64,
                     type: file.type || "application/octet-stream",
                     name: file.name
                 });
-
             }
         } catch (error) {
             console.error("ATTACHMENT ERROR:", error);
@@ -134,8 +134,6 @@ export default function ChatInput({
 
     const handleSubmit = (event) => {
         event.preventDefault();
-
-
 
         if (!text.trim() && !attachment) {
             return;
@@ -149,10 +147,12 @@ export default function ChatInput({
 
         clearTimeout(typingTimeout.current);
 
-        sendTyping({
-            roomCode,
-            typing: false
-        });
+        if (roomCode) {
+            sendTyping({
+                roomCode,
+                typing: false
+            });
+        }
     };
 
     useEffect(() => {
@@ -163,7 +163,7 @@ export default function ChatInput({
 
     if (!canSend) {
         return (
-            <div className="bg-white dark:bg-stone-800 border-t dark:border-stone-700 p-4 shrink-0 text-center">
+            <div className="shrink-0 bg-white dark:bg-stone-800 border-t dark:border-stone-700 px-4 py-3 text-center">
                 <p className="text-sm text-gray-400 dark:text-stone-500">
                     Only admins can send messages in this channel.
                 </p>
@@ -172,19 +172,21 @@ export default function ChatInput({
     }
 
     return (
-        <div className="bg-white dark:bg-stone-800 border-t dark:border-stone-700 shrink-0">
+        <div className="shrink-0 w-full bg-white dark:bg-stone-800 border-t dark:border-stone-700">
             {(attachment || attachError) && (
-                <div className="px-3 sm:px-4 pt-2 flex items-center gap-2">
+                <div className="px-3 sm:px-4 pt-2 flex items-center gap-2 min-w-0">
                     {attachment && (
-                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-stone-700 rounded-lg px-2 py-1.5">
+                        <div className="flex items-center gap-2 min-w-0 max-w-full bg-gray-100 dark:bg-stone-700 rounded-lg px-2 py-1.5">
                             {attachment.type.startsWith("image/") ? (
                                 <img
                                     src={attachment.data}
                                     alt="Preview"
-                                    className="w-10 h-10 rounded object-cover"
+                                    className="w-10 h-10 rounded object-cover shrink-0"
                                 />
                             ) : (
-                                <span className="text-xl">📄</span>
+                                <span className="text-xl shrink-0">
+                                    📄
+                                </span>
                             )}
 
                             <span className="text-xs text-gray-700 dark:text-stone-300 max-w-[140px] truncate">
@@ -192,8 +194,9 @@ export default function ChatInput({
                             </span>
 
                             <button
+                                type="button"
                                 onClick={() => setAttachment(null)}
-                                className="text-gray-400 dark:text-stone-400 hover:text-red-500 text-sm px-1"
+                                className="text-gray-400 dark:text-stone-400 hover:text-red-500 text-sm px-1 shrink-0"
                             >
                                 ✕
                             </button>
@@ -201,7 +204,7 @@ export default function ChatInput({
                     )}
 
                     {attachError && (
-                        <span className="text-xs text-red-600 dark:text-red-400">
+                        <span className="text-xs text-red-600 dark:text-red-400 truncate">
                             {attachError}
                         </span>
                     )}
@@ -210,7 +213,7 @@ export default function ChatInput({
 
             <form
                 onSubmit={handleSubmit}
-                className="p-2 sm:p-4 flex gap-2 sm:gap-3 items-center"
+                className="w-full p-2 sm:p-4 flex gap-2 sm:gap-3 items-center"
             >
                 <input
                     ref={fileInputRef}
@@ -235,13 +238,13 @@ export default function ChatInput({
                     value={text}
                     onChange={handleChange}
                     placeholder="Type a message..."
-                    className="flex-1 min-w-0 border dark:border-stone-600 rounded-lg px-3 sm:px-4 py-3 outline-none text-base bg-white dark:bg-stone-700 text-gray-900 dark:text-stone-100 placeholder:text-gray-400 dark:placeholder:text-stone-400"
+                    className="flex-1 min-w-0 w-0 border dark:border-stone-600 rounded-lg px-3 sm:px-4 py-3 outline-none text-base bg-white dark:bg-stone-700 text-gray-900 dark:text-stone-100 placeholder:text-gray-400 dark:placeholder:text-stone-400"
                 />
 
                 <button
                     type="submit"
                     disabled={processingFile}
-                    className="bg-[#993556] text-white px-4 sm:px-6 py-3 rounded-lg font-semibold shrink-0 hover:bg-[#7a2b46] disabled:opacity-50"
+                    className="shrink-0 bg-[#993556] text-white px-4 sm:px-6 py-3 rounded-lg font-semibold hover:bg-[#7a2b46] disabled:opacity-50"
                 >
                     Send
                 </button>
